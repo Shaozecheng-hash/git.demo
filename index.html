@@ -1,13 +1,937 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Document</title>
+    <meta name="filename" content="drone_delivery.html">
+    <title>西溪飞鹰 - 无人机送餐服务</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.2/dist/echarts.min.js"></script>
+    <style>
+        :root {
+            --primary: #00BCD4;
+            --primary-dark: #0097A7;
+            --secondary: #4CAF50;
+            --secondary-dark: #388E3C;
+            --light: #F8F8F8;
+            --dark: #263238;
+            --gray: #757575;
+            --white: #FFFFFF;
+            --shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+            --radius: 12px;
+            --drone-color: #2196F3;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'PingFang SC', 'Helvetica Neue', Arial, sans-serif;
+        }
+
+        html {
+            font-size: 16px;
+        }
+
+        body {
+            background: linear-gradient(135deg, #e8f4fc, #c5e7f1);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 40px 0;
+            overflow-x: auto;
+        }
+
+        .container {
+            display: flex;
+            gap: 40px;
+            padding: 20px;
+        }
+
+        .page {
+            width: 375px;
+            min-width: 375px;
+            height: 812px;
+            background-color: var(--white);
+            border-radius: 30px;
+            box-shadow: var(--shadow);
+            overflow: hidden;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* 页头通用样式 */
+        .header {
+            background: var(--primary);
+            color: white;
+            padding: 1rem 1rem 0.8rem;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .header-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            font-weight: 700;
+            font-size: 1.2rem;
+        }
+
+        .logo svg {
+            width: 32px;
+            height: 32px;
+            fill: var(--white);
+            margin-right: 0.5rem;
+        }
+
+        .user-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background-color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            color: var(--primary);
+        }
+
+        .location-bar {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 20px;
+            padding: 0.4rem 0.8rem;
+            font-size: 0.9rem;
+        }
+        
+        /* 内容区通用样式 */
+        .main-content {
+            padding: 1rem;
+            flex: 1;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .section-title {
+            font-size: 1.25rem;
+            font-weight: 700;
+            margin: 0.5rem 0 1rem;
+            color: var(--dark);
+        }
+
+        .subtitle {
+            font-size: 0.9rem;
+            color: var(--gray);
+            margin-bottom: 0.5rem;
+        }
+
+        .card {
+            background: var(--white);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
+            padding: 1.2rem;
+            margin-bottom: 1rem;
+            transition: transform 0.3s ease;
+        }
+
+        .card:hover {
+            transform: translateY(-3px);
+        }
+
+        /* 无人机配送标识 */
+        .drone-tag {
+            background: rgba(33, 150, 243, 0.1);
+            color: var(--drone-color);
+            padding: 0.2rem 0.8rem;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.3rem;
+        }
+
+        .drone-icon {
+            display: inline-block;
+            margin-right: 0.5rem;
+        }
+
+        .drone-icon svg {
+            width: 24px;
+            height: 24px;
+            fill: var(--drone-color);
+        }
+
+        /* 菜单项目样式 */
+        .menu-item {
+            display: flex;
+            gap: 1rem;
+            padding: 0.8rem 0;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+        }
+
+        .menu-item:last-child {
+            border-bottom: none;
+        }
+
+        .menu-image {
+            width: 80px;
+            height: 80px;
+            border-radius: 10px;
+            background-size: cover;
+            background-position: center;
+            flex-shrink: 0;
+        }
+
+        .menu-details {
+            flex: 1;
+        }
+
+        .menu-name {
+            font-weight: 600;
+            margin-bottom: 0.3rem;
+        }
+
+        .menu-description {
+            color: var(--gray);
+            font-size: 0.85rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .menu-price {
+            font-weight: 700;
+            color: var(--primary);
+            font-size: 1.1rem;
+        }
+
+        .quantity-control {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-top: 0.5rem;
+        }
+
+        .btn-qty {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            border: 1px solid #ddd;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: transparent;
+            font-weight: bold;
+            font-size: 1.2rem;
+            cursor: pointer;
+        }
+
+        .btn-qty:disabled {
+            color: #ccc;
+        }
+
+        .qty-number {
+            min-width: 30px;
+            text-align: center;
+        }
+        
+        /* 订单跟踪页面 */
+        .delivery-status {
+            background: linear-gradient(135deg, #29323c, #485563);
+            color: white;
+            text-align: center;
+            padding: 1.5rem;
+            border-radius: var(--radius);
+            margin: 1rem 0;
+        }
+        
+        .map-container {
+            height: 200px;
+            background: #1a2834;
+            border-radius: 12px;
+            margin: 1rem 0;
+            overflow: hidden;
+            position: relative;
+        }
+        
+        .drone-marker {
+            position: absolute;
+            top: 50%;
+            left: 20%;
+            transform: translate(-50%, -50%);
+            z-index: 10;
+            transition: all 5s linear;
+            animation: droneFly 8s infinite linear;
+        }
+        
+        .drone-marker svg {
+            width: 50px;
+            height: 50px;
+            fill: #29B6F6;
+            filter: drop-shadow(0 0 5px rgba(41, 182, 246, 0.8));
+        }
+        
+        @keyframes droneFly {
+            0% { left: 20%; transform: translate(-50%, -50%) rotate(0deg); }
+            50% { left: 80%; transform: translate(-50%, -50%) rotate(180deg); }
+            100% { left: 20%; transform: translate(-50%, -50%) rotate(360deg); }
+        }
+        
+        .status-container {
+            display: flex;
+            justify-content: space-between;
+            margin: 1rem 0;
+            position: relative;
+        }
+        
+        .status-container::before {
+            content: "";
+            position: absolute;
+            top: 12px;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: #e0e0e0;
+            z-index: 1;
+        }
+        
+        .status-point {
+            position: relative;
+            z-index: 2;
+            text-align: center;
+            width: 24%;
+        }
+        
+        .status-dot {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            background: #e0e0e0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 0.5rem;
+            font-size: 0.8rem;
+            color: white;
+        }
+        
+        .status-point.active .status-dot {
+            background: var(--secondary);
+        }
+        
+        /* 支付页面 */
+        .payment-card {
+            background: white;
+            border-radius: 20px;
+            box-shadow: var(--shadow);
+            margin: 1rem 0;
+            overflow: hidden;
+        }
+        
+        .card-header {
+            background: linear-gradient(to right, var(--primary), var(--primary-dark));
+            color: white;
+            padding: 1rem;
+            font-weight: 600;
+            font-size: 1.1rem;
+        }
+        
+        .price-detail {
+            padding: 1.2rem;
+            border-bottom: 1px solid #f0f0f0;
+        }
+        
+        .price-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 0.4rem 0;
+        }
+        
+        .price-label {
+            color: var(--gray);
+        }
+        
+        .price-value {
+            font-weight: 500;
+        }
+        
+        .total-row {
+            margin-top: 0.5rem;
+            padding-top: 0.5rem;
+            border-top: 1px dashed #ddd;
+            font-weight: 700;
+            font-size: 1.2rem;
+        }
+        
+        .payment-options {
+            padding: 1.2rem;
+        }
+        
+        .payment-option {
+            display: flex;
+            align-items: center;
+            padding: 0.8rem 0;
+            border-bottom: 1px solid #f0f0f0;
+            cursor: pointer;
+        }
+        
+        .payment-option:last-child {
+            border-bottom: none;
+        }
+        
+        .payment-icon {
+            width: 40px;
+            height: 40px;
+            background: #f5f5f5;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 1rem;
+        }
+        
+        .check-icon {
+            margin-left: auto;
+            color: var(--secondary);
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+        
+        .payment-option.active .check-icon {
+            opacity: 1;
+        }
+        
+        /* 底部购物车 */
+        .cart-bar {
+            background: var(--white);
+            padding: 0.9rem 1.2rem;
+            box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.05);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: sticky;
+            bottom: 0;
+            z-index: 100;
+        }
+        
+        .cart-info {
+            flex: 1;
+        }
+        
+        .cart-title {
+            font-weight: 600;
+        }
+        
+        .cart-items {
+            font-size: 0.9rem;
+            color: var(--gray);
+        }
+        
+        .cart-total {
+            font-weight: 700;
+            color: var(--primary);
+            font-size: 1.3rem;
+        }
+        
+        .cart-button {
+            background: var(--secondary);
+            color: white;
+            border: none;
+            border-radius: 20px;
+            padding: 0.9rem 1.5rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s;
+            min-width: 120px;
+            font-size: 1rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+        }
+        
+        .cart-button:hover {
+            background: var(--secondary-dark);
+        }
+        
+        .checkout-button {
+            background: var(--primary);
+            min-width: 140px;
+        }
+        
+        .checkout-button:hover {
+            background: var(--primary-dark);
+        }
+    </style>
 </head>
 <body>
-    <h1>abc</h1>
-    <h3>123</h3>
-    <h2>123</h2>
+    <!-- 容器包含三个界面 -->
+    <div class="container">
+        <!-- 页面1：订餐主页 -->
+        <section id="home-page" class="page">
+            <div class="header">
+                <div class="header-top">
+                    <div class="logo">
+                        <!-- Logo为内联SVG -->
+                        <svg viewBox="0 0 24 24">
+                            <path d="M12,3L1,9L12,15L21,10.09V17H23V9M5,13.18V17.18L12,21L19,17.18V13.18L12,17L5,13.18Z" />
+                        </svg>
+                        西溪飞鹰
+                    </div>
+                    <div class="user-avatar">U</div>
+                </div>
+                
+                <div class="location-bar">
+                    <i class="fas fa-map-marker-alt"></i>
+                    <span>西溪湿地西区，无人机可配送区域</span>
+                </div>
+            </div>
+            
+            <div class="main-content">
+                <h2 class="section-title">推荐餐厅</h2>
+                <div class="card">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                        <h3 style="font-weight: 700;">湖畔咖啡馆</h3>
+                        <span class="drone-tag">
+                            <svg viewBox="0 0 24 24" class="drone-icon">
+                                <path d="M12,2A2,2 0 0,1 14,4C14,4.74 13.6,5.39 13,5.73V7H14A7,7 0 0,1 21,14H22V16H21A7,7 0 0,1 14,23H10A7,7 0 0,1 3,16H2V14H3A7,7 0 0,1 10,7H11V5.73C10.4,5.39 10,4.74 10,4A2,2 0 0,1 12,2M7.5,13A2.5,2.5 0 0,0 5,15.5A2.5,2.5 0 0,0 7.5,18A2.5,2.5 0 0,0 10,15.5A2.5,2.5 0 0,0 7.5,13M16.5,13A2.5,2.5 0 0,0 14,15.5A2.5,2.5 0 0,0 16.5,18A2.5,2.5 0 0,0 19,15.5A2.5,2.5 0 0,0 16.5,13Z" />
+                            </svg>
+                            无人机配送
+                        </span>
+                    </div>
+                    
+                    <p style="color: var(--gray); margin-bottom: 1rem;">咖啡 · 西餐 · 甜点 · 距离2.1km</p>
+                    
+                    <div class="menu-item">
+                        <div class="menu-image" style="background-image: url('https://images.unsplash.com/photo-1499636136210-6f4ee915583e?crop=entropy&cs=tinysrgb&fit=crop&w=400&h=400')"></div>
+                        <div class="menu-details">
+                            <div class="menu-name">卡布奇诺</div>
+                            <div class="menu-description">精选阿拉比卡咖啡豆，浓郁香醇</div>
+                            <div class="menu-price">¥28.00</div>
+                            <div class="quantity-control">
+                                <button class="btn-qty" onclick="updateQuantity(this, -1)">-</button>
+                                <span class="qty-number">0</span>
+                                <button class="btn-qty" onclick="updateQuantity(this, 1)">+</button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="menu-item">
+                        <div class="menu-image" style="background-image: url('https://images.unsplash.com/photo-1484723091739-30a097e8f929?crop=entropy&cs=tinysrgb&fit=crop&w=400&h=400')"></div>
+                        <div class="menu-details">
+                            <div class="menu-name">蓝莓松饼</div>
+                            <div class="menu-description">新鲜蓝莓，松软可口</div>
+                            <div class="menu-price">¥36.00</div>
+                            <div class="quantity-control">
+                                <button class="btn-qty" onclick="updateQuantity(this, -1)">-</button>
+                                <span class="qty-number">0</span>
+                                <button class="btn-qty" onclick="updateQuantity(this, 1)">+</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="card">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                        <h3 style="font-weight: 700;">湖景酒楼</h3>
+                        <span class="drone-tag">
+                            <svg viewBox="0 0 24 24" class="drone-icon">
+                                <path d="M12,2A2,2 0 0,1 14,4C14,4.74 13.6,5.39 13,5.73V7H14A7,7 0 0,1 21,14H22V16H21A7,7 0 0,1 14,23H10A7,7 0 0,1 3,16H2V14H3A7,7 0 0,1 10,7H11V5.73C10.4,5.39 10,4.74 10,4A2,2 0 0,1 12,2M7.5,13A2.5,2.5 0 0,0 5,15.5A2.5,2.5 0 0,0 7.5,18A2.5,2.5 0 0,0 10,15.5A2.5,2.5 0 0,0 7.5,13M16.5,13A2.5,2.5 0 0,0 14,15.5A2.5,2.5 0 0,0 16.5,18A2.5,2.5 0 0,0 19,15.5A2.5,2.5 0 0,0 16.5,13Z" />
+                            </svg>
+                            无人机配送
+                        </span>
+                    </div>
+                    
+                    <p style="color: var(--gray); margin-bottom: 1rem;">杭帮菜 · 河鲜 · 距离1.8km</p>
+                    
+                    <div class="menu-item">
+                        <div class="menu-image" style="background-image: url('https://images.unsplash.com/photo-1585937421612-70a0083564bc?crop=entropy&cs=tinysrgb&fit=crop&w=400&h=400')"></div>
+                        <div class="menu-details">
+                            <div class="menu-name">西湖醋鱼</div>
+                            <div class="menu-description">本地草鱼，糖醋浓郁</div>
+                            <div class="menu-price">¥68.00</div>
+                            <div class="quantity-control">
+                                <button class="btn-qty" onclick="updateQuantity(this, -1)">-</button>
+                                <span class="qty-number">0</span>
+                                <button class="btn-qty" onclick="updateQuantity(this, 1)">+</button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="menu-item">
+                        <div class="menu-image" style="background-image: url('https://images.unsplash.com/photo-1660503040870-cc45d7e42e97?crop=entropy&cs=tinysrgb&fit=crop&w=400&h=400')"></div>
+                        <div class="menu-details">
+                            <div class="menu-name">龙井虾仁</div>
+                            <div class="menu-description">新鲜河虾，佐以西湖龙井</div>
+                            <div class="menu-price">¥78.00</div>
+                            <div class="quantity-control">
+                                <button class="btn-qty" onclick="updateQuantity(this, -1)">-</button>
+                                <span class="qty-number">0</span>
+                                <button class="btn-qty" onclick="updateQuantity(this, 1)">+</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="cart-bar">
+                <div class="cart-info">
+                    <div class="cart-title">购物车</div>
+                    <div class="cart-items">0 件商品</div>
+                </div>
+                <div class="cart-total">¥0.00</div>
+                <button class="cart-button" onclick="calculatePrice()">
+                    <i class="fas fa-bag-shopping"></i>
+                    去结算
+                </button>
+            </div>
+        </section>
+        
+        <!-- 页面2：订单跟踪 -->
+        <section id="tracking-page" class="page">
+            <div class="header">
+                <div class="header-top">
+                    <div class="logo">
+                        <svg viewBox="0 0 24 24">
+                            <path d="M12,3L1,9L12,15L21,10.09V17H23V9M5,13.18V17.18L12,21L19,17.18V13.18L12,17L5,13.18Z" />
+                        </svg>
+                        西溪飞鹰 - 配送中
+                    </div>
+                </div>
+            </div>
+            
+            <div class="main-content">
+                <div class="delivery-status">
+                    <h2 style="font-size: 1.5rem; margin-bottom: 0.5rem;">您的订单正在配送中</h2>
+                    <p style="margin-bottom: 0.5rem;">
+                        <i class="fas fa-drone" style="margin-right: 8px;"></i>
+                        飞鹰-651 正在配送您的订单
+                    </p>
+                    <div style="font-size: 2.5rem; font-weight: 700; margin: 1rem 0;">12:15</div>
+                    <p>预计15分钟内到达</p>
+                </div>
+                
+                <div class="map-container">
+                    <div id="delivery-map" style="width: 100%; height: 100%;"></div>
+                    <div class="drone-marker">
+                        <svg viewBox="0 0 24 24">
+                            <path d="M12,2A2,2 0 0,1 14,4C14,4.74 13.6,5.39 13,5.73V7H14A7,7 0 0,1 21,14H22V16H21A7,7 0 0,1 14,23H10A7,7 0 0,1 3,16H2V14H3A7,7 0 0,1 10,7H11V5.73C10.4,5.39 10,4.74 10,4A2,2 0 0,1 12,2M7.5,13A2.5,2.5 0 0,0 5,15.5A2.5,2.5 0 0,0 7.5,18A2.5,2.5 0 0,0 10,15.5A2.5,2.5 0 0,0 7.5,13M16.5,13A2.5,2.5 0 0,0 14,15.5A2.5,2.5 0 0,0 16.5,18A2.5,2.5 0 0,0 19,15.5A2.5,2.5 0 0,0 16.5,13Z" />
+                        </svg>
+                    </div>
+                </div>
+                
+                <h2 class="section-title">配送进度</h2>
+                <div class="status-container">
+                    <div class="status-point active">
+                        <div class="status-dot">✓</div>
+                        <div>接单</div>
+                    </div>
+                    <div class="status-point active">
+                        <div class="status-dot">✓</div>
+                        <div>配餐中</div>
+                    </div>
+                    <div class="status-point active">
+                        <div class="status-dot">3</div>
+                        <div>运送中</div>
+                    </div>
+                    <div class="status-point">
+                        <div class="status-dot">4</div>
+                        <div>送达</div>
+                    </div>
+                </div>
+                
+                <h2 class="section-title">配送详情</h2>
+                <div class="card">
+                    <div class="menu-item">
+                        <div class="menu-image" style="background-image: url('https://images.unsplash.com/photo-1499636136210-6f4ee915583e?crop=entropy&cs=tinysrgb&fit=crop&w=400&h=400')"></div>
+                        <div class="menu-details">
+                            <div class="menu-name">卡布奇诺</div>
+                            <div>x1</div>
+                        </div>
+                        <div class="menu-price">¥28.00</div>
+                    </div>
+                    <div class="menu-item">
+                        <div class="menu-image" style="background-image: url('https://images.unsplash.com/photo-1660503040870-cc45d7e42e97?crop=entropy&cs=tinysrgb&fit=crop&w=400&h=400')"></div>
+                        <div class="menu-details">
+                            <div class="menu-name">龙井虾仁</div>
+                            <div>x1</div>
+                        </div>
+                        <div class="menu-price">¥78.00</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="cart-bar">
+                <button class="cart-button">
+                    <i class="fas fa-phone"></i>
+                    联系骑手
+                </button>
+                <div style="flex:1"></div>
+                <button class="cart-button checkout-button">
+                    <i class="fas fa-map-marker-alt"></i>
+                    实时追踪
+                </button>
+            </div>
+        </section>
+        
+        <!-- 页面3：支付页面 -->
+        <section id="payment-page" class="page">
+            <div class="header">
+                <div class="header-top">
+                    <div class="logo">
+                        <svg viewBox="0 0 24 24">
+                            <path d="M12,3L1,9L12,15L21,10.09V17H23V9M5,13.18V17.18L12,21L19,17.18V13.18L12,17L5,13.18Z" />
+                        </svg>
+                        订单支付
+                    </div>
+                </div>
+            </div>
+            
+            <div class="main-content">
+                <div class="payment-card">
+                    <div class="card-header">
+                        订单摘要
+                    </div>
+                    <div class="price-detail">
+                        <div class="price-row">
+                            <span class="price-label">商品总价</span>
+                            <span class="price-value" id="product-total">¥0.00</span>
+                        </div>
+                        <div class="price-row">
+                            <span class="price-label">打包费</span>
+                            <span class="price-value" id="packing-fee">¥0.00</span>
+                        </div>
+                        <div class="price-row">
+                            <span class="price-label">配送费</span>
+                            <span class="price-value" id="delivery-fee">¥0.00</span>
+                        </div>
+                        <div class="price-row total-row">
+                            <span class="price-label">总计</span>
+                            <span class="price-value" id="total-price">¥0.00</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <h2 class="section-title">配送信息</h2>
+                <div class="card">
+                    <div style="display: flex; align-items: center; margin-bottom: 1rem;">
+                        <i class="fas fa-map-marker-alt" style="color: var(--primary); font-size: 1.2rem; margin-right: 1rem;"></i>
+                        <div>
+                            <p style="font-weight: 600;">张三 · 139****5678</p>
+                            <p>西溪湿地慢生活街区C1座 露天花园</p>
+                        </div>
+                    </div>
+                    <div style="display: flex; align-items: center;">
+                        <i class="fas fa-clock" style="color: var(--primary); font-size: 1.2rem; margin-right: 1rem;"></i>
+                        <div>
+                            <p style="font-weight: 600;">立即送出</p>
+                            <p>预计送达 11:40</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <h2 class="section-title">支付方式</h2>
+                <div class="card">
+                    <div class="payment-option active">
+                        <div class="payment-icon">
+                            <i class="fab fa-alipay" style="color: #009FE8; font-size: 1.5rem;"></i>
+                        </div>
+                        <div>
+                            <p style="font-weight: 600;">支付宝</p>
+                        </div>
+                        <span class="check-icon">
+                            <i class="fas fa-check-circle"></i>
+                        </span>
+                    </div>
+                    <div class="payment-option">
+                        <div class="payment-icon">
+                            <i class="fab fa-weixin" style="color: #07C160; font-size: 1.5rem;"></i>
+                        </div>
+                        <div>
+                            <p style="font-weight: 600;">微信支付</p>
+                        </div>
+                        <span class="check-icon">
+                            <i class="fas fa-check-circle"></i>
+                        </span>
+                    </div>
+                    <div class="payment-option">
+                        <div class="payment-icon">
+                            <i class="far fa-credit-card" style="color: #293047; font-size: 1.3rem;"></i>
+                        </div>
+                        <div>
+                            <p style="font-weight: 600;">银行卡支付</p>
+                        </div>
+                        <span class="check-icon">
+                            <i class="fas fa-check-circle"></i>
+                        </span>
+                    </div>
+                </div>
+                
+                <button class="cart-button checkout-button" style="width: 100%; margin-top: auto;">
+                    支付宝确认支付 ¥0.00
+                </button>
+            </div>
+        </section>
+    </div>
+
+    <script>
+        // 初始化ECharts路线图
+        const chartDom = document.createElement('div');
+        chartDom.setAttribute('id', 'delivery-map');
+        chartDom.style.width = '100%';
+        chartDom.style.height = '100%';
+        document.querySelector('.map-container').appendChild(chartDom);
+        
+        const mapChart = echarts.init(chartDom);
+        const mapOption = {
+            backgroundColor: '#1a2834',
+            geo: {
+                map: 'customMap',
+                zoom: 1.1,
+                center: [120.05, 30.27],
+                roam: false,
+                itemStyle: {
+                    borderColor: '#182321',
+                    borderWidth: 3,
+                    areaColor: '#1c2d35'
+                },
+                label: {
+                    show: false
+                }
+            },
+            series: [
+                {
+                    type: 'scatter',
+                    coordinateSystem: 'geo',
+                    data: [[120.05, 30.27, '西溪湿地公园', 100]],
+                    symbolSize: 16,
+                    symbol: 'circle',
+                    itemStyle: {
+                        color: '#29B6F6'
+                    },
+                    label: {
+                        show: true,
+                        formatter: '{b}',
+                        position: 'top',
+                        color: '#ffffff',
+                        fontSize: 12
+                    }
+                },
+                {
+                    type: 'lines',
+                    coordinateSystem: 'geo',
+                    effect: {
+                        show: true,
+                        period: 2,
+                        trailLength: 0.1,
+                        symbol: 'arrow',
+                        symbolSize: 8,
+                    },
+                    lineStyle: {
+                        width: 2,
+                        color: '#ec9e9b',
+                        curveness: 0.1
+                    },
+                    data: [
+                        {
+                            coords: [
+                                [120.0, 30.25],
+                                [119.98, 30.22],
+                                [120.05, 30.27]
+                            ]
+                        }
+                    ]
+                }
+            ]
+        };
+        mapChart.setOption(mapOption);
+        
+        // 实时更新价格计算
+        function updateQuantity(button, change) {
+            const container = button.closest('.quantity-control');
+            const quantityElement = container.querySelector('.qty-number');
+            let quantity = parseInt(quantityElement.textContent);
+            
+            if (change < 0 && quantity === 0) return;
+            
+            quantity += change;
+            if (quantity < 0) quantity = 0;
+            
+            quantityElement.textContent = quantity;
+            
+            // 更新购物车摘要
+            updateCartSummary();
+        }
+        
+        function updateCartSummary() {
+            let totalItems = 0;
+            let productTotal = 0;
+            
+            // 遍历所有菜单项
+            document.querySelectorAll('.menu-item').forEach(item => {
+                const priceStr = item.querySelector('.menu-price').textContent;
+                const price = parseFloat(priceStr.replace('¥', ''));
+                const quantity = parseInt(item.querySelector('.qty-number').textContent);
+                
+                totalItems += quantity;
+                productTotal += price * quantity;
+            });
+            
+            // 更新购物车信息
+            document.querySelectorAll('.cart-items').forEach(el => {
+                el.textContent = `${totalItems} 件商品`;
+            });
+            
+            document.querySelectorAll('.cart-total').forEach(el => {
+                el.textContent = `¥${productTotal.toFixed(2)}`;
+            });
+        }
+        
+        // 计算总价（包括配送费和打包费）
+        function calculatePrice() {
+            // 获取商品总价
+            let productTotal = 0;
+            document.querySelectorAll('.cart-total').forEach(el => {
+                const totalStr = el.textContent;
+                productTotal = parseFloat(totalStr.replace('¥', ''));
+            });
+            
+            // 动态计算打包费（每件的打包费）
+            const itemCount = parseInt(
+                document.querySelector('.cart-items').textContent.split(' ')[0]
+            );
+            const packingFee = (itemCount > 0) ? 5 : 0;
+            
+            // 计算配送费 - 根据位置模拟计算
+            const baseDeliveryFee = 8;
+            const distanceFactor = 1.2; // 假设距离影响系数
+            const deliveryFee = baseDeliveryFee * distanceFactor;
+            
+            const totalPrice = productTotal + packingFee + deliveryFee;
+            
+            // 更新支付页面价格
+            if (productTotal > 0) {
+                document.getElementById('product-total').textContent = `¥${productTotal.toFixed(2)}`;
+                document.getElementById('packing-fee').textContent = `¥${packingFee.toFixed(2)}`;
+                document.getElementById('delivery-fee').textContent = `¥${deliveryFee.toFixed(2)}`;
+                document.getElementById('total-price').textContent = `¥${totalPrice.toFixed(2)}`;
+                document.querySelector('.cart-button.checkout-button').textContent = `支付宝确认支付 ¥${totalPrice.toFixed(2)}`;
+            }
+        }
+        
+        // 初始化默认值
+        updateCartSummary();
+    </script>
 </body>
 </html>

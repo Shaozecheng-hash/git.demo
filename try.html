@@ -3,7 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>无人机+物流柜 数字孪生管理平台</title>
+    <title>无人机+物流柜 数字孪生管理平台 - 中国地图版</title>
+    <!-- 使用更可靠的 Leaflet + OpenStreetMap (完全免费，无需API Key) -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <style>
         * {
             margin: 0;
@@ -136,6 +139,7 @@
             margin-bottom: 10px;
             border-left: 3px solid;
             transition: all 0.3s;
+            cursor: pointer;
         }
 
         .device-card:hover {
@@ -192,7 +196,7 @@
             gap: 3px;
         }
 
-        /* 中间3D地图区域 */
+        /* 中间地图区域 */
         .center-panel {
             background: #0f2a44;
             border-radius: 10px;
@@ -201,25 +205,77 @@
             border: 1px solid #1e3a5f;
         }
 
-        #map-3d {
+        #china-map {
             width: 100%;
             height: 100%;
-            background: linear-gradient(145deg, #0a1a2f 0%, #1e3a5f 100%);
             position: relative;
+            z-index: 1;
+            background: #0a1a2f;
         }
 
-        /* 模拟3D地图效果 */
+        /* 确保leaflet容器正确显示 */
+        .leaflet-container {
+            width: 100%;
+            height: 100%;
+            background: #0a1a2f;
+        }
+
+        .leaflet-tile-pane {
+            filter: brightness(0.7) invert(1) hue-rotate(180deg);
+        }
+
         .map-overlay {
             position: absolute;
             top: 10px;
             right: 10px;
-            background: rgba(16, 32, 56, 0.8);
+            background: rgba(16, 32, 56, 0.9);
             backdrop-filter: blur(5px);
-            padding: 10px;
+            padding: 12px;
+            border-radius: 8px;
+            border: 1px solid #00e5ff;
+            font-size: 12px;
+            color: #e0e0e0;
+            z-index: 1000;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+        }
+
+        .map-legend {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            background: rgba(16, 32, 56, 0.9);
+            backdrop-filter: blur(5px);
+            padding: 10px 15px;
             border-radius: 8px;
             border: 1px solid #1e3a5f;
             font-size: 12px;
-            color: #8a9bb5;
+            color: #e0e0e0;
+            z-index: 1000;
+            display: flex;
+            gap: 20px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .legend-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+        }
+
+        .legend-dot.cabinet {
+            background: #4caf50;
+            box-shadow: 0 0 15px #4caf50;
+        }
+
+        .legend-dot.uav {
+            background: #ff9800;
+            box-shadow: 0 0 15px #ff9800;
         }
 
         /* 右侧面板 */
@@ -419,7 +475,7 @@
             height: 100%;
             background: rgba(0, 0, 0, 0.7);
             backdrop-filter: blur(5px);
-            z-index: 1000;
+            z-index: 2000;
             justify-content: center;
             align-items: center;
         }
@@ -595,6 +651,78 @@
             margin-top: 20px;
         }
 
+        /* 自定义标记样式 */
+        .custom-marker {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+        }
+
+        .cabinet-marker {
+            width: 30px;
+            height: 30px;
+            background: #4caf50;
+            border-radius: 50%;
+            box-shadow: 0 0 20px #4caf50;
+            animation: pulse 2s infinite;
+            border: 2px solid #fff;
+        }
+
+        .uav-marker {
+            width: 30px;
+            height: 30px;
+            background: #ff9800;
+            clip-path: polygon(50% 0%, 0% 100%, 100% 100%);
+            transform: rotate(0deg);
+            box-shadow: 0 0 20px #ff9800;
+            animation: fly 3s linear infinite;
+            border: 2px solid #fff;
+        }
+
+        .marker-label {
+            background: rgba(16, 32, 56, 0.9);
+            color: white;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            white-space: nowrap;
+            margin-top: 5px;
+            border: 1px solid #00e5ff;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+        }
+
+        @keyframes pulse {
+            0% {
+                box-shadow: 0 0 20px #4caf50;
+                transform: scale(1);
+            }
+            50% {
+                box-shadow: 0 0 40px #4caf50;
+                transform: scale(1.1);
+            }
+            100% {
+                box-shadow: 0 0 20px #4caf50;
+                transform: scale(1);
+            }
+        }
+
+        @keyframes fly {
+            0% {
+                transform: rotate(0deg) translateY(0);
+            }
+            25% {
+                transform: rotate(5deg) translateY(-2px);
+            }
+            75% {
+                transform: rotate(-5deg) translateY(2px);
+            }
+            100% {
+                transform: rotate(0deg) translateY(0);
+            }
+        }
+
         /* 滚动条美化 */
         ::-webkit-scrollbar {
             width: 6px;
@@ -650,21 +778,21 @@
             <div class="filter-section">
                 <div class="filter-title">区域筛选</div>
                 <div class="filter-item active">全部区域 (45)</div>
-                <div class="filter-item">A区 (12)</div>
-                <div class="filter-item">B区 (15)</div>
-                <div class="filter-item">C区 (10)</div>
-                <div class="filter-item">D区 (8)</div>
+                <div class="filter-item">辽宁朝阳 (2)</div>
+                <div class="filter-item">苏州 (1)</div>
+                <div class="filter-item">衢州 (1)</div>
+                <div class="filter-item">雄安 (1)</div>
             </div>
 
             <div class="filter-section">
                 <div class="filter-title">设备类型</div>
                 <div class="filter-item active">全部设备</div>
-                <div class="filter-item">物流柜 (30)</div>
-                <div class="filter-item">无人机 (15)</div>
+                <div class="filter-item">物流柜 (5)</div>
+                <div class="filter-item">无人机 (3)</div>
             </div>
 
             <div class="filter-section">
-                <div class="filter-title">在线设备列表</div>
+                <div class="filter-title">设备列表</div>
                 <div class="device-list">
                     <!-- 柜机示例 -->
                     <div class="device-card cabinet" onclick="showCabinetDetail('C001')">
@@ -673,7 +801,7 @@
                             <span class="device-status status-online">在线</span>
                         </div>
                         <div class="device-info">
-                            <span>A区-1号点位</span>
+                            <span>辽宁朝阳音乐喷泉广场</span>
                             <span>格口: 12/20 | 电压: 220.5V</span>
                         </div>
                     </div>
@@ -684,7 +812,7 @@
                             <span class="device-status status-online">在线</span>
                         </div>
                         <div class="device-info">
-                            <span>A区-2号点位</span>
+                            <span>辽宁朝阳人民公园</span>
                             <span>格口: 18/20 | 电压: 219.8V</span>
                         </div>
                     </div>
@@ -692,11 +820,33 @@
                     <div class="device-card cabinet" onclick="showCabinetDetail('C003')">
                         <div class="device-header">
                             <span class="device-name">📦 柜机 C003</span>
-                            <span class="device-status status-offline">离线</span>
+                            <span class="device-status status-online">在线</span>
                         </div>
                         <div class="device-info">
-                            <span>B区-5号点位</span>
-                            <span>格口: 0/20 | 电压: 0V</span>
+                            <span>苏州市低空经济发展展示馆</span>
+                            <span>格口: 15/20 | 电压: 221.2V</span>
+                        </div>
+                    </div>
+
+                    <div class="device-card cabinet" onclick="showCabinetDetail('C004')">
+                        <div class="device-header">
+                            <span class="device-name">📦 柜机 C004</span>
+                            <span class="device-status status-online">在线</span>
+                        </div>
+                        <div class="device-info">
+                            <span>衢州市低空经济展示馆</span>
+                            <span>格口: 8/20 | 电压: 220.1V</span>
+                        </div>
+                    </div>
+
+                    <div class="device-card cabinet" onclick="showCabinetDetail('C005')">
+                        <div class="device-header">
+                            <span class="device-name">📦 柜机 C005</span>
+                            <span class="device-status status-online">在线</span>
+                        </div>
+                        <div class="device-info">
+                            <span>雄安新区</span>
+                            <span>格口: 10/20 | 电压: 220.3V</span>
                         </div>
                     </div>
 
@@ -708,17 +858,28 @@
                         </div>
                         <div class="device-info">
                             <span>电量: 85% | 高度: 50m</span>
-                            <span>当前任务: T001</span>
+                            <span>当前位置: 辽宁朝阳</span>
                         </div>
                     </div>
 
                     <div class="device-card uav" onclick="showUavDetail('U002')">
                         <div class="device-header">
                             <span class="device-name">🚁 无人机 U002</span>
+                            <span class="device-status status-flying">飞行中</span>
+                        </div>
+                        <div class="device-info">
+                            <span>电量: 72% | 高度: 45m</span>
+                            <span>当前位置: 苏州</span>
+                        </div>
+                    </div>
+
+                    <div class="device-card uav" onclick="showUavDetail('U003')">
+                        <div class="device-header">
+                            <span class="device-name">🚁 无人机 U003</span>
                             <span class="device-status status-online">待命</span>
                         </div>
                         <div class="device-info">
-                            <span>电量: 92% | 位置: 机库B</span>
+                            <span>电量: 96% | 位置: 雄安新区</span>
                             <span>当前任务: 无</span>
                         </div>
                     </div>
@@ -726,64 +887,22 @@
             </div>
         </div>
 
-        <!-- 中间3D地图区域 -->
+        <!-- 中间中国地图区域 -->
         <div class="center-panel">
-            <div id="map-3d">
-                <!-- 模拟3D地图元素 -->
-                <div style="position: relative; width: 100%; height: 100%;">
-                    <!-- 网格背景 -->
-                    <svg width="100%" height="100%" style="position: absolute; top: 0; left: 0; opacity: 0.2;">
-                        <defs>
-                            <pattern id="grid" patternUnits="userSpaceOnUse" width="50" height="50">
-                                <path d="M 50 0 L 0 0 0 50" fill="none" stroke="#00e5ff" stroke-width="0.5"/>
-                            </pattern>
-                        </defs>
-                        <rect width="100%" height="100%" fill="url(#grid)"/>
-                    </svg>
-
-                    <!-- 模拟柜机点位 -->
-                    <div style="position: absolute; top: 30%; left: 30%;">
-                        <div style="position: relative;">
-                            <div style="width: 40px; height: 40px; background: #4caf50; border-radius: 50%; box-shadow: 0 0 20px #4caf50; animation: pulse 2s infinite;"></div>
-                            <div style="position: absolute; bottom: 100%; left: 50%; transform: translateX(-50%); white-space: nowrap; background: rgba(0,0,0,0.7); padding: 2px 6px; border-radius: 3px; font-size: 10px;">柜机 C001 (12/20)</div>
-                        </div>
-                    </div>
-
-                    <div style="position: absolute; top: 50%; left: 60%;">
-                        <div style="position: relative;">
-                            <div style="width: 40px; height: 40px; background: #ff9800; border-radius: 50%; box-shadow: 0 0 20px #ff9800;"></div>
-                            <div style="position: absolute; bottom: 100%; left: 50%; transform: translateX(-50%); white-space: nowrap; background: rgba(0,0,0,0.7); padding: 2px 6px; border-radius: 3px; font-size: 10px;">柜机 C002 (18/20)</div>
-                        </div>
-                    </div>
-
-                    <div style="position: absolute; top: 70%; left: 45%;">
-                        <div style="position: relative;">
-                            <div style="width: 40px; height: 40px; background: #f44336; border-radius: 50%; box-shadow: 0 0 20px #f44336;"></div>
-                            <div style="position: absolute; bottom: 100%; left: 50%; transform: translateX(-50%); white-space: nowrap; background: rgba(0,0,0,0.7); padding: 2px 6px; border-radius: 3px; font-size: 10px;">柜机 C003 (离线)</div>
-                        </div>
-                    </div>
-
-                    <!-- 模拟无人机航迹 -->
-                    <div style="position: absolute; top: 40%; left: 40%;" id="uav-marker">
-                        <div style="position: relative;">
-                            <div style="width: 30px; height: 30px; background: #00e5ff; clip-path: polygon(50% 0%, 0% 100%, 100% 100%); transform: rotate(135deg); box-shadow: 0 0 20px #00e5ff; animation: fly 10s linear infinite;"></div>
-                            <div style="position: absolute; bottom: 100%; left: 50%; transform: translateX(-50%); white-space: nowrap; background: rgba(0,0,0,0.7); padding: 2px 6px; border-radius: 3px; font-size: 10px;">UAV-001 飞行中</div>
-                        </div>
-                    </div>
-
-                    <!-- 航迹线 -->
-                    <svg width="100%" height="100%" style="position: absolute; top: 0; left: 0; pointer-events: none;">
-                        <path d="M 300 200 L 500 300 L 400 400 L 200 350" stroke="#00e5ff" stroke-width="2" stroke-dasharray="5,5" fill="none" opacity="0.5"/>
-                        <circle cx="300" cy="200" r="4" fill="#00e5ff"/>
-                        <circle cx="500" cy="300" r="4" fill="#00e5ff"/>
-                        <circle cx="400" cy="400" r="4" fill="#00e5ff"/>
-                        <circle cx="200" cy="350" r="4" fill="#00e5ff"/>
-                    </svg>
-                </div>
-            </div>
+            <div id="china-map"></div>
             <div class="map-overlay">
-                <div>🗺️ 3D地图 | 缩放: 15x | 中心: 24.55°N, 118.12°E</div>
-                <div style="margin-top: 5px; color: #00e5ff;">柜机: 30 | 无人机: 15 | 航迹: 3</div>
+                <div>🗺️ 中国地图 | 缩放: 5x | 数据中心: 中国</div>
+                <div style="margin-top: 5px; color: #00e5ff;">柜机: 5 | 无人机: 3 | 航迹: 2</div>
+            </div>
+            <div class="map-legend">
+                <div class="legend-item">
+                    <span class="legend-dot cabinet"></span>
+                    <span>物流柜机</span>
+                </div>
+                <div class="legend-item">
+                    <span class="legend-dot uav"></span>
+                    <span>无人机</span>
+                </div>
             </div>
         </div>
 
@@ -856,29 +975,47 @@
                 <div style="color: #00e5ff; margin-bottom: 10px;">柜机使用率排行</div>
                 <div style="margin: 10px 0;">
                     <div style="display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 5px;">
-                        <span>柜机 C015</span>
-                        <span>95%</span>
+                        <span>柜机 C002 (辽宁朝阳)</span>
+                        <span>90%</span>
                     </div>
                     <div style="width: 100%; height: 6px; background: #1e3a5f; border-radius: 3px;">
-                        <div style="width: 95%; height: 100%; background: #4caf50; border-radius: 3px;"></div>
+                        <div style="width: 90%; height: 100%; background: #ff9800; border-radius: 3px;"></div>
                     </div>
                 </div>
                 <div style="margin: 10px 0;">
                     <div style="display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 5px;">
-                        <span>柜机 C008</span>
-                        <span>88%</span>
+                        <span>柜机 C003 (苏州)</span>
+                        <span>75%</span>
                     </div>
                     <div style="width: 100%; height: 6px; background: #1e3a5f; border-radius: 3px;">
-                        <div style="width: 88%; height: 100%; background: #4caf50; border-radius: 3px;"></div>
+                        <div style="width: 75%; height: 100%; background: #4caf50; border-radius: 3px;"></div>
                     </div>
                 </div>
                 <div style="margin: 10px 0;">
                     <div style="display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 5px;">
-                        <span>柜机 C021</span>
-                        <span>82%</span>
+                        <span>柜机 C001 (辽宁朝阳)</span>
+                        <span>60%</span>
                     </div>
                     <div style="width: 100%; height: 6px; background: #1e3a5f; border-radius: 3px;">
-                        <div style="width: 82%; height: 100%; background: #ff9800; border-radius: 3px;"></div>
+                        <div style="width: 60%; height: 100%; background: #4caf50; border-radius: 3px;"></div>
+                    </div>
+                </div>
+                <div style="margin: 10px 0;">
+                    <div style="display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 5px;">
+                        <span>柜机 C005 (雄安)</span>
+                        <span>50%</span>
+                    </div>
+                    <div style="width: 100%; height: 6px; background: #1e3a5f; border-radius: 3px;">
+                        <div style="width: 50%; height: 100%; background: #2196f3; border-radius: 3px;"></div>
+                    </div>
+                </div>
+                <div style="margin: 10px 0;">
+                    <div style="display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 5px;">
+                        <span>柜机 C004 (衢州)</span>
+                        <span>40%</span>
+                    </div>
+                    <div style="width: 100%; height: 6px; background: #1e3a5f; border-radius: 3px;">
+                        <div style="width: 40%; height: 100%; background: #4caf50; border-radius: 3px;"></div>
                     </div>
                 </div>
             </div>
@@ -901,7 +1038,7 @@
                         <th>任务号</th>
                         <th>无人机</th>
                         <th>目标柜机</th>
-                        <th>格口</th>
+                        <th>地点</th>
                         <th>状态</th>
                         <th>计划时间</th>
                         <th>操作</th>
@@ -911,8 +1048,8 @@
                     <tr>
                         <td>T001</td>
                         <td>UAV-001</td>
-                        <td>C015</td>
-                        <td>05</td>
+                        <td>C001</td>
+                        <td>辽宁朝阳音乐喷泉广场</td>
                         <td><span class="task-status status-flying">飞行中</span></td>
                         <td>10:30</td>
                         <td>
@@ -923,8 +1060,8 @@
                     <tr>
                         <td>T002</td>
                         <td>UAV-002</td>
-                        <td>C008</td>
-                        <td>12</td>
+                        <td>C003</td>
+                        <td>苏州市低空经济发展展示馆</td>
                         <td><span class="task-status status-pending">待执行</span></td>
                         <td>10:45</td>
                         <td>
@@ -935,8 +1072,8 @@
                     <tr>
                         <td>T003</td>
                         <td>UAV-003</td>
-                        <td>C021</td>
-                        <td>08</td>
+                        <td>C005</td>
+                        <td>雄安新区</td>
                         <td><span class="task-status status-success">已完成</span></td>
                         <td>10:15</td>
                         <td>
@@ -946,8 +1083,8 @@
                     <tr>
                         <td>T004</td>
                         <td>UAV-001</td>
-                        <td>C005</td>
-                        <td>03</td>
+                        <td>C004</td>
+                        <td>衢州市低空经济展示馆</td>
                         <td><span class="task-status status-failed">失败</span></td>
                         <td>09:50</td>
                         <td>
@@ -964,7 +1101,7 @@
     <div class="modal" id="cabinetModal">
         <div class="modal-content">
             <div class="modal-header">
-                <h2 style="color: #00e5ff;">📦 柜机 C001 孪生详情</h2>
+                <h2 style="color: #00e5ff;">📦 柜机 <span id="modalCabinetId">C001</span> 孪生详情</h2>
                 <span class="modal-close" onclick="closeModal()">&times;</span>
             </div>
             
@@ -972,10 +1109,357 @@
                 <div style="flex: 1;">
                     <div class="info-item">
                         <div class="info-label">柜机名称</div>
-                        <div class="info-value">A区-1号柜机</div>
+                        <div class="info-value" id="modalCabinetName">辽宁朝阳音乐喷泉广场柜机</div>
                     </div>
                     <div class="info-item">
                         <div class="info-label">安装地址</div>
-                        <div class="info-value">北京市朝阳区XX路XX号</div>
+                        <div class="info-value" id="modalCabinetAddress">辽宁省朝阳市音乐喷泉广场</div>
                     </div>
-                    <div class="info
+                    <div class="info-item">
+                        <div class="info-label">设备SN</div>
+                        <div class="info-value" id="modalCabinetSn">CAB-2024-001</div>
+                    </div>
+                </div>
+                <div style="flex: 1;">
+                    <div class="info-item">
+                        <div class="info-label">在线状态</div>
+                        <div class="info-value" style="color: #4caf50;" id="modalCabinetStatus">在线</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">最后在线</div>
+                        <div class="info-value" id="modalCabinetLastOnline">2026-03-14 14:28:35</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">固件版本</div>
+                        <div class="info-value" id="modalCabinetFirmware">v2.1.5</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 3D格口展示 -->
+            <div class="chart-title">
+                <span>🎯 3D格口状态 (1:1还原)</span>
+                <span style="font-size: 11px; color: #8a9bb5;">点击格口查看详情</span>
+            </div>
+            <div class="cabinet-3d" id="cabinetSlots3D">
+                <!-- 动态生成20个格口 -->
+            </div>
+
+            <!-- 实时参数 -->
+            <div class="chart-title" style="margin-top: 20px;">
+                <span>📊 实时参数曲线</span>
+            </div>
+            <div class="chart-container">
+                <div style="display: flex; justify-content: space-between; margin-bottom: 15px;">
+                    <span>电压: <span style="color: #00e5ff;">220.5V</span></span>
+                    <span>信号: <span style="color: #00e5ff;">98%</span></span>
+                    <span>温度: <span style="color: #00e5ff;">25.3°C</span></span>
+                </div>
+                <div class="chart-grid">
+                    <div class="chart-bar" style="height: 80px;" data-value="80"></div>
+                    <div class="chart-bar" style="height: 85px;" data-value="85"></div>
+                    <div class="chart-bar" style="height: 75px;" data-value="75"></div>
+                    <div class="chart-bar" style="height: 90px;" data-value="90"></div>
+                    <div class="chart-bar" style="height: 70px;" data-value="70"></div>
+                    <div class="chart-bar" style="height: 95px;" data-value="95"></div>
+                    <div class="chart-bar" style="height: 82px;" data-value="82"></div>
+                </div>
+            </div>
+
+            <div class="action-buttons">
+                <button class="btn btn-primary" onclick="remoteOpenSlot()">🔓 远程开锁</button>
+                <button class="btn btn-outline" onclick="refreshStatus()">🔄 刷新状态</button>
+                <button class="btn btn-outline" onclick="exportLog()">📄 导出日志</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 更新当前时间
+        function updateTime() {
+            const now = new Date();
+            const year = now.getFullYear();
+            const month = String(now.getMonth() + 1).padStart(2, '0');
+            const day = String(now.getDate()).padStart(2, '0');
+            const hours = String(now.getHours()).padStart(2, '0');
+            const minutes = String(now.getMinutes()).padStart(2, '0');
+            const seconds = String(now.getSeconds()).padStart(2, '0');
+            document.getElementById('current-time').textContent = `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+        }
+        setInterval(updateTime, 1000);
+        updateTime();
+
+        // 初始化中国地图
+        window.onload = function() {
+            try {
+                // 确保容器存在
+                const mapContainer = document.getElementById('china-map');
+                if (!mapContainer) {
+                    console.error('地图容器不存在');
+                    return;
+                }
+
+                // 创建地图实例
+                var map = L.map('china-map').setView([35.0, 108.0], 4); // 中国中心点
+
+                // 添加深色底图 (使用CartoDB的深色主题，完全免费)
+                L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+                    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+                    subdomains: 'abcd',
+                    maxZoom: 19,
+                    minZoom: 3
+                }).addTo(map);
+
+                // 定义5个指定位置的坐标
+                var locations = [
+                    { 
+                        id: 'C001',
+                        name: '辽宁朝阳音乐喷泉广场', 
+                        pos: [41.57, 120.45], 
+                        type: 'cabinet', 
+                        used: 12, 
+                        total: 20,
+                        address: '辽宁省朝阳市音乐喷泉广场'
+                    },
+                    { 
+                        id: 'C002',
+                        name: '辽宁朝阳人民公园', 
+                        pos: [41.58, 120.46], 
+                        type: 'cabinet', 
+                        used: 18, 
+                        total: 20,
+                        address: '辽宁省朝阳市人民公园'
+                    },
+                    { 
+                        id: 'C003',
+                        name: '苏州市低空经济发展展示馆', 
+                        pos: [31.30, 120.58], 
+                        type: 'cabinet', 
+                        used: 15, 
+                        total: 20,
+                        address: '江苏省苏州市低空经济发展展示馆'
+                    },
+                    { 
+                        id: 'C004',
+                        name: '衢州市低空经济展示馆', 
+                        pos: [28.94, 118.87], 
+                        type: 'cabinet', 
+                        used: 8, 
+                        total: 20,
+                        address: '浙江省衢州市低空经济展示馆'
+                    },
+                    { 
+                        id: 'C005',
+                        name: '雄安新区', 
+                        pos: [38.98, 115.98], 
+                        type: 'cabinet', 
+                        used: 10, 
+                        total: 20,
+                        address: '河北省雄安新区'
+                    }
+                ];
+
+                // 无人机位置
+                var uavs = [
+                    { name: 'UAV-001', pos: [41.59, 120.47], type: 'uav', battery: 85, status: '飞行中' },
+                    { name: 'UAV-002', pos: [31.32, 120.60], type: 'uav', battery: 72, status: '飞行中' },
+                    { name: 'UAV-003', pos: [38.99, 115.99], type: 'uav', battery: 96, status: '待命' }
+                ];
+
+                // 添加柜机标记
+                locations.forEach(function(loc) {
+                    // 创建自定义图标
+                    var icon = L.divIcon({
+                        className: 'custom-marker',
+                        html: `
+                            <div style="display: flex; flex-direction: column; align-items: center;">
+                                <div style="width: 30px; height: 30px; background: #4caf50; border-radius: 50%; box-shadow: 0 0 20px #4caf50; animation: pulse 2s infinite; border: 2px solid white;"></div>
+                                <div style="background: rgba(16,32,56,0.95); color: white; padding: 4px 8px; border-radius: 4px; font-size: 11px; white-space: nowrap; margin-top: 5px; border: 1px solid #00e5ff; box-shadow: 0 2px 5px rgba(0,0,0,0.3);">
+                                    ${loc.name}<br>${loc.used}/${loc.total}
+                                </div>
+                            </div>
+                        `,
+                        iconSize: [100, 60],
+                        iconAnchor: [50, 60]
+                    });
+
+                    var marker = L.marker(loc.pos, { icon: icon }).addTo(map);
+                    
+                    // 绑定点击事件
+                    marker.on('click', function() {
+                        showCabinetDetail(loc.id);
+                    });
+                });
+
+                // 添加无人机标记
+                uavs.forEach(function(uav) {
+                    var icon = L.divIcon({
+                        className: 'custom-marker',
+                        html: `
+                            <div style="display: flex; flex-direction: column; align-items: center;">
+                                <div style="width: 30px; height: 30px; background: #ff9800; clip-path: polygon(50% 0%, 0% 100%, 100% 100%); box-shadow: 0 0 20px #ff9800; animation: fly 3s linear infinite; border: 2px solid white;"></div>
+                                <div style="background: rgba(16,32,56,0.95); color: white; padding: 4px 8px; border-radius: 4px; font-size: 11px; white-space: nowrap; margin-top: 5px; border: 1px solid #ff9800; box-shadow: 0 2px 5px rgba(0,0,0,0.3);">
+                                    ${uav.name} ${uav.battery}%
+                                </div>
+                            </div>
+                        `,
+                        iconSize: [100, 60],
+                        iconAnchor: [50, 60]
+                    });
+
+                    var marker = L.marker(uav.pos, { icon: icon }).addTo(map);
+                    
+                    marker.on('click', function() {
+                        showUavDetail(uav.name);
+                    });
+                });
+
+                // 添加航迹线（模拟）
+                var flightPath1 = [
+                    [41.57, 120.45],
+                    [41.58, 120.46],
+                    [41.59, 120.47],
+                    [41.58, 120.48]
+                ];
+                
+                L.polyline(flightPath1, {
+                    color: '#00e5ff',
+                    weight: 2,
+                    opacity: 0.5,
+                    dashArray: '5, 5'
+                }).addTo(map);
+
+                var flightPath2 = [
+                    [31.30, 120.58],
+                    [31.31, 120.59],
+                    [31.32, 120.60],
+                    [31.31, 120.61]
+                ];
+                
+                L.polyline(flightPath2, {
+                    color: '#00e5ff',
+                    weight: 2,
+                    opacity: 0.5,
+                    dashArray: '5, 5'
+                }).addTo(map);
+
+                // 添加样式到head
+                const style = document.createElement('style');
+                style.textContent = `
+                    @keyframes pulse {
+                        0% { transform: scale(1); box-shadow: 0 0 20px #4caf50; }
+                        50% { transform: scale(1.1); box-shadow: 0 0 40px #4caf50; }
+                        100% { transform: scale(1); box-shadow: 0 0 20px #4caf50; }
+                    }
+                    @keyframes fly {
+                        0% { transform: rotate(0deg) translateY(0); }
+                        25% { transform: rotate(5deg) translateY(-2px); }
+                        75% { transform: rotate(-5deg) translateY(2px); }
+                        100% { transform: rotate(0deg) translateY(0); }
+                    }
+                `;
+                document.head.appendChild(style);
+
+                console.log('地图初始化成功');
+
+            } catch (error) {
+                console.error('地图初始化失败:', error);
+                // 显示错误提示
+                document.getElementById('china-map').innerHTML = `
+                    <div style="color: white; text-align: center; padding: 50px;">
+                        地图加载中...<br>
+                        如果长时间无法加载，请检查网络连接
+                    </div>
+                `;
+            }
+        };
+
+        // 生成3D格口
+        function generateSlots() {
+            const container = document.getElementById('cabinetSlots3D');
+            if (!container) return;
+            
+            container.innerHTML = '';
+            for (let i = 1; i <= 20; i++) {
+                const slot = document.createElement('div');
+                slot.className = 'slot-3d';
+                if (i <= 12) {
+                    if (i % 3 === 0) {
+                        slot.classList.add('used');
+                    } else {
+                        slot.classList.add('free');
+                    }
+                } else {
+                    slot.classList.add('free');
+                }
+                
+                slot.innerHTML = `
+                    <span class="slot-number">${i}</span>
+                    <span class="slot-status">${i <= 12 ? '占用' : '空闲'}</span>
+                    <span class="lock-status">${i % 5 === 0 ? '🔒关' : '🔓开'}</span>
+                `;
+                
+                slot.onclick = function() { alert(`格口 ${i} 详情\n状态: ${i <= 12 ? '占用' : '空闲'}\n锁状态: ${i % 5 === 0 ? '关闭' : '打开'}`); };
+                container.appendChild(slot);
+            }
+        }
+
+        // 显示柜机详情
+        function showCabinetDetail(id) {
+            document.getElementById('cabinetModal').classList.add('active');
+            document.getElementById('modalCabinetId').textContent = id;
+            
+            const details = {
+                'C001': { name: '辽宁朝阳音乐喷泉广场柜机', address: '辽宁省朝阳市音乐喷泉广场' },
+                'C002': { name: '辽宁朝阳人民公园柜机', address: '辽宁省朝阳市人民公园' },
+                'C003': { name: '苏州市低空经济发展展示馆柜机', address: '江苏省苏州市低空经济发展展示馆' },
+                'C004': { name: '衢州市低空经济展示馆柜机', address: '浙江省衢州市低空经济展示馆' },
+                'C005': { name: '雄安新区柜机', address: '河北省雄安新区' }
+            };
+            
+            const detail = details[id] || details['C001'];
+            document.getElementById('modalCabinetName').textContent = detail.name;
+            document.getElementById('modalCabinetAddress').textContent = detail.address;
+            
+            generateSlots();
+        }
+
+        // 显示无人机详情
+        function showUavDetail(id) {
+            const details = {
+                'UAV-001': { battery: 85, status: '飞行中', location: '辽宁朝阳上空' },
+                'UAV-002': { battery: 72, status: '飞行中', location: '苏州上空' },
+                'UAV-003': { battery: 96, status: '待命', location: '雄安新区机库' }
+            };
+            
+            const detail = details[id] || { battery: 85, status: '未知', location: '未知' };
+            alert(`无人机 ${id} 详情\n电量: ${detail.battery}%\n状态: ${detail.status}\n当前位置: ${detail.location}`);
+        }
+
+        // 显示任务弹窗
+        function showTaskModal() {
+            alert('新建任务\n请选择目标柜机:\n1. 辽宁朝阳音乐喷泉广场 (C001)\n2. 辽宁朝阳人民公园 (C002)\n3. 苏州市低空经济发展展示馆 (C003)\n4. 衢州市低空经济展示馆 (C004)\n5. 雄安新区 (C005)');
+        }
+
+        // 关闭弹窗
+        function closeModal() {
+            document.getElementById('cabinetModal').classList.remove('active');
+        }
+
+        // 远程开锁
+        function remoteOpenSlot() {
+            alert('开锁指令已发送\n请等待格口响应...');
+        }
+
+        // 刷新状态
+        function refreshStatus() {
+            alert('状态已刷新');
+        }
+
+        // 导出日志
+        function exportLog() {
+            alert('日志导出中...');
+        }
+    </script>
+</body>
+</html>

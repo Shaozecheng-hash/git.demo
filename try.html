@@ -4,17 +4,662 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>无人机+物流柜 数字孪生监控系统</title>
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <!-- 添加图表库 -->
+    <!-- 百度地图 API -->
+    <script type="text/javascript" src="https://api.map.baidu.com/api?v=3.0&ak=ZbA6tB5v2v1nK8zR9xLpQ3wY7uI2oE5jH4gF1dS6a"></script>
+    <!-- 图表库 -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-    <!-- 添加日期时间选择器 -->
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
-    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
     <style>
-        /* 原有样式保持不变，添加以下新样式 */
-        
-        /* 监控状态指示灯 */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Microsoft YaHei', sans-serif;
+            background: #0a1a2f;
+            color: #e0e0e0;
+            overflow: hidden;
+        }
+
+        /* 主布局 */
+        .dashboard {
+            display: grid;
+            grid-template-columns: 280px 1fr 350px;
+            grid-template-rows: 60px 1fr 360px;
+            height: 100vh;
+            gap: 10px;
+            padding: 10px;
+            background: #0a1a2f;
+        }
+
+        /* 顶部导航栏 */
+        .top-nav {
+            grid-column: 1 / -1;
+            background: rgba(16, 32, 56, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 10px;
+            padding: 0 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border: 1px solid #1e3a5f;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .logo h1 {
+            font-size: 18px;
+            color: #00e5ff;
+            text-shadow: 0 0 10px rgba(0, 229, 255, 0.5);
+        }
+
+        .stats {
+            display: flex;
+            gap: 30px;
+        }
+
+        .stat-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+            padding: 5px 10px;
+            border-radius: 5px;
+            transition: all 0.3s;
+        }
+
+        .stat-item:hover {
+            background: #1e3a5f;
+            transform: translateY(-2px);
+        }
+
+        .stat-label {
+            color: #8a9bb5;
+            font-size: 14px;
+        }
+
+        .stat-value {
+            color: #00e5ff;
+            font-weight: bold;
+            font-size: 18px;
+        }
+
+        .time {
+            color: #8a9bb5;
+            font-size: 14px;
+        }
+
+        /* 左侧面板 */
+        .left-panel {
+            background: rgba(16, 32, 56, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 10px;
+            padding: 15px;
+            border: 1px solid #1e3a5f;
+            overflow-y: auto;
+        }
+
+        .filter-section {
+            margin-bottom: 20px;
+        }
+
+        .filter-title {
+            color: #00e5ff;
+            font-size: 14px;
+            margin-bottom: 10px;
+            padding-left: 5px;
+            border-left: 3px solid #00e5ff;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .filter-item {
+            padding: 10px 12px;
+            margin: 5px 0;
+            background: #1e3a5f;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: 13px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .filter-item:hover {
+            background: #2b4a75;
+            transform: translateX(5px);
+        }
+
+        .filter-item.active {
+            background: #00e5ff;
+            color: #0a1a2f;
+            font-weight: bold;
+            box-shadow: 0 0 15px rgba(0, 229, 255, 0.5);
+        }
+
+        .filter-count {
+            background: rgba(0,0,0,0.3);
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 11px;
+        }
+
+        .device-list {
+            margin-top: 15px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .device-card {
+            background: #1e3a5f;
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 10px;
+            border-left: 3px solid;
+            transition: all 0.3s;
+            cursor: pointer;
+        }
+
+        .device-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 5px 15px rgba(0, 229, 255, 0.2);
+        }
+
+        .device-card.cabinet {
+            border-left-color: #4caf50;
+        }
+
+        .device-card.uav {
+            border-left-color: #ff9800;
+        }
+
+        .device-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+
+        .device-name {
+            font-weight: bold;
+            font-size: 14px;
+        }
+
+        .device-status {
+            font-size: 11px;
+            padding: 2px 8px;
+            border-radius: 12px;
+        }
+
+        .status-online {
+            background: #4caf50;
+            color: #fff;
+        }
+
+        .status-flying {
+            background: #ff9800;
+            color: #fff;
+        }
+
+        .device-info {
+            font-size: 12px;
+            color: #8a9bb5;
+            display: flex;
+            flex-direction: column;
+            gap: 3px;
+        }
+
+        /* 中间地图区域 */
+        .center-panel {
+            background: #0f2a44;
+            border-radius: 10px;
+            position: relative;
+            overflow: hidden;
+            border: 1px solid #1e3a5f;
+        }
+
+        #china-map {
+            width: 100%;
+            height: 100%;
+            position: relative;
+        }
+
+        .map-controls {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            z-index: 100;
+        }
+
+        .map-control-btn {
+            width: 36px;
+            height: 36px;
+            background: rgba(16, 32, 56, 0.9);
+            border: 1px solid #00e5ff;
+            border-radius: 8px;
+            color: #00e5ff;
+            font-size: 20px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s;
+        }
+
+        .map-control-btn:hover {
+            background: #00e5ff;
+            color: #0a1a2f;
+        }
+
+        .map-overlay {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: rgba(16, 32, 56, 0.9);
+            backdrop-filter: blur(5px);
+            padding: 12px;
+            border-radius: 8px;
+            border: 1px solid #00e5ff;
+            font-size: 12px;
+            color: #e0e0e0;
+            z-index: 100;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+        }
+
+        .map-legend {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            background: rgba(16, 32, 56, 0.9);
+            backdrop-filter: blur(5px);
+            padding: 10px 15px;
+            border-radius: 8px;
+            border: 1px solid #1e3a5f;
+            font-size: 12px;
+            z-index: 100;
+            display: flex;
+            gap: 20px;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .legend-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+        }
+
+        .legend-dot.cabinet {
+            background: #4caf50;
+            box-shadow: 0 0 10px #4caf50;
+        }
+
+        .legend-dot.uav {
+            background: #ff9800;
+            box-shadow: 0 0 10px #ff9800;
+        }
+
+        /* 右侧面板 */
+        .right-panel {
+            background: rgba(16, 32, 56, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 10px;
+            padding: 15px;
+            border: 1px solid #1e3a5f;
+            overflow-y: auto;
+        }
+
+        .kpi-card {
+            background: #1e3a5f;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 15px;
+            transition: all 0.3s;
+        }
+
+        .kpi-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 229, 255, 0.2);
+        }
+
+        .kpi-row {
+            display: flex;
+            justify-content: space-between;
+            margin: 10px 0;
+        }
+
+        .kpi-item {
+            text-align: center;
+            flex: 1;
+            cursor: pointer;
+            padding: 5px;
+            border-radius: 5px;
+        }
+
+        .kpi-item:hover {
+            background: #2b4a75;
+        }
+
+        .kpi-value {
+            font-size: 24px;
+            font-weight: bold;
+            color: #00e5ff;
+        }
+
+        .kpi-label {
+            font-size: 12px;
+            color: #8a9bb5;
+            margin-top: 5px;
+        }
+
+        .alarm-scroll {
+            background: #1e3a5f;
+            border-radius: 8px;
+            padding: 10px;
+            max-height: 150px;
+            overflow-y: auto;
+        }
+
+        .alarm-item {
+            padding: 8px;
+            border-bottom: 1px solid #2b4a75;
+            font-size: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .alarm-item:hover {
+            background: #2b4a75;
+            transform: translateX(5px);
+        }
+
+        .alarm-level {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+        }
+
+        .level-critical { background: #f44336; box-shadow: 0 0 10px #f44336; }
+        .level-warning { background: #ff9800; }
+        .level-info { background: #2196f3; }
+
+        /* 底部面板 */
+        .bottom-panel {
+            grid-column: 2 / -1;
+            background: rgba(16, 32, 56, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 10px;
+            padding: 15px;
+            border: 1px solid #1e3a5f;
+            overflow-y: auto;
+        }
+
+        .tab-bar {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+            border-bottom: 1px solid #1e3a5f;
+            padding-bottom: 10px;
+        }
+
+        .tab {
+            padding: 8px 20px;
+            cursor: pointer;
+            font-size: 14px;
+            border-radius: 8px;
+            transition: all 0.3s;
+            font-weight: 500;
+            position: relative;
+        }
+
+        .tab:hover {
+            background: #1e3a5f;
+            transform: translateY(-2px);
+        }
+
+        .tab.active {
+            background: #00e5ff;
+            color: #0a1a2f;
+            box-shadow: 0 0 15px rgba(0, 229, 255, 0.5);
+        }
+
+        .task-badge {
+            background: rgba(0,0,0,0.3);
+            padding: 2px 8px;
+            border-radius: 20px;
+            margin-left: 8px;
+            font-size: 11px;
+        }
+
+        .task-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+        }
+
+        .task-table th {
+            text-align: left;
+            padding: 12px 8px;
+            color: #00e5ff;
+            font-weight: 600;
+            border-bottom: 2px solid #00e5ff;
+        }
+
+        .task-table td {
+            padding: 12px 8px;
+            border-bottom: 1px solid #2b4a75;
+        }
+
+        .task-row {
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .task-row:hover {
+            background: #1e3a5f;
+            transform: translateX(5px);
+        }
+
+        .task-status {
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 11px;
+            display: inline-block;
+            font-weight: 500;
+        }
+
+        .status-pending {
+            background: #ff9800;
+            color: #fff;
+        }
+
+        .status-flying {
+            background: #2196f3;
+            color: #fff;
+        }
+
+        .status-success {
+            background: #4caf50;
+            color: #fff;
+        }
+
+        .progress-bar {
+            width: 80px;
+            height: 6px;
+            background: #2b4a75;
+            border-radius: 3px;
+            overflow: hidden;
+            display: inline-block;
+            margin-right: 8px;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #00e5ff, #0066ff);
+            border-radius: 3px;
+            transition: width 0.3s;
+        }
+
+        .btn {
+            padding: 5px 12px;
+            border-radius: 5px;
+            border: none;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.3s;
+        }
+
+        .btn-primary {
+            background: #00e5ff;
+            color: #0a1a2f;
+        }
+
+        .btn-primary:hover {
+            background: #00b8d4;
+            transform: translateY(-2px);
+        }
+
+        .btn-outline {
+            background: transparent;
+            border: 1px solid #00e5ff;
+            color: #00e5ff;
+        }
+
+        .btn-outline:hover {
+            background: rgba(0, 229, 255, 0.1);
+            transform: translateY(-2px);
+        }
+
+        .refresh-btn {
+            background: #1e3a5f;
+            border: 1px solid #00e5ff;
+            color: #00e5ff;
+            padding: 5px 12px;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: 12px;
+        }
+
+        .refresh-btn:hover {
+            background: #00e5ff;
+            color: #0a1a2f;
+        }
+
+        /* 模态框 */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(8px);
+            z-index: 2000;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: #1e3a5f;
+            border-radius: 15px;
+            width: 800px;
+            max-width: 90%;
+            max-height: 90vh;
+            overflow-y: auto;
+            padding: 20px;
+            border: 2px solid #00e5ff;
+            box-shadow: 0 0 40px rgba(0, 229, 255, 0.5);
+            animation: modalSlideIn 0.3s;
+        }
+
+        @keyframes modalSlideIn {
+            from { transform: translateY(-50px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #2b4a75;
+        }
+
+        .modal-close {
+            font-size: 28px;
+            cursor: pointer;
+            color: #8a9bb5;
+            transition: all 0.3s;
+        }
+
+        .modal-close:hover {
+            color: #f44336;
+            transform: rotate(90deg);
+        }
+
+        .cabinet-3d {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 8px;
+            margin: 20px 0;
+        }
+
+        .slot-3d {
+            aspect-ratio: 1;
+            background: #2b4a75;
+            border-radius: 8px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-size: 11px;
+            cursor: pointer;
+            transition: all 0.3s;
+            border: 1px solid #3a5f8a;
+        }
+
+        .slot-3d.free { background: #2b4a75; }
+        .slot-3d.used { background: #4caf50; }
+
+        .slot-3d .slot-number { font-weight: bold; font-size: 16px; }
+        .slot-3d:hover { transform: scale(1.08); box-shadow: 0 0 20px rgba(0, 229, 255, 0.6); }
+
+        .info-item {
+            background: #2b4a75;
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 10px;
+        }
+
+        .info-label { font-size: 11px; color: #8a9bb5; margin-bottom: 5px; }
+        .info-value { font-size: 16px; font-weight: bold; }
+        .action-buttons { display: flex; gap: 10px; margin-top: 20px; }
+
         .monitor-status {
             position: fixed;
             bottom: 20px;
@@ -29,7 +674,7 @@
             gap: 8px;
             border: 1px solid #00e5ff;
         }
-        
+
         .status-led {
             width: 10px;
             height: 10px;
@@ -38,85 +683,12 @@
             box-shadow: 0 0 5px #4caf50;
             animation: pulse-led 1s infinite;
         }
-        
-        .status-led.offline {
-            background: #f44336;
-            animation: none;
-        }
-        
+
         @keyframes pulse-led {
             0% { opacity: 0.5; }
             100% { opacity: 1; }
         }
-        
-        /* 刷新按钮 */
-        .refresh-btn {
-            background: #1e3a5f;
-            border: 1px solid #00e5ff;
-            color: #00e5ff;
-            padding: 5px 12px;
-            border-radius: 5px;
-            cursor: pointer;
-            transition: all 0.3s;
-        }
-        
-        .refresh-btn:hover {
-            background: #00e5ff;
-            color: #0a1a2f;
-        }
-        
-        /* 时间范围选择器 */
-        .date-range {
-            display: flex;
-            gap: 10px;
-            margin-bottom: 10px;
-        }
-        
-        .date-input {
-            background: #1e3a5f;
-            border: 1px solid #00e5ff;
-            color: #fff;
-            padding: 5px 10px;
-            border-radius: 5px;
-            font-size: 12px;
-        }
-        
-        /* 图表容器 */
-        .chart-wrapper {
-            margin-top: 15px;
-        }
-        
-        canvas {
-            max-height: 200px;
-        }
-        
-        /* 操作日志 */
-        .log-container {
-            max-height: 200px;
-            overflow-y: auto;
-            font-size: 11px;
-            font-family: monospace;
-        }
-        
-        .log-entry {
-            padding: 5px;
-            border-bottom: 1px solid #2b4a75;
-            color: #8a9bb5;
-        }
-        
-        .log-entry.info {
-            color: #00e5ff;
-        }
-        
-        .log-entry.warning {
-            color: #ff9800;
-        }
-        
-        .log-entry.error {
-            color: #f44336;
-        }
-        
-        /* 通知提示 */
+
         .notification {
             position: fixed;
             top: 80px;
@@ -130,24 +702,28 @@
             display: none;
             animation: slideIn 0.3s;
         }
-        
-        .notification.show {
-            display: block;
-        }
-        
+
+        .notification.show { display: block; }
         @keyframes slideIn {
-            from {
-                transform: translateX(100%);
-                opacity: 0;
-            }
-            to {
-                transform: translateX(0);
-                opacity: 1;
-            }
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
         }
-        
-        /* 设备控制面板 */
-        .control-panel {
+
+        .log-container {
+            max-height: 150px;
+            overflow-y: auto;
+            font-size: 11px;
+            font-family: monospace;
+        }
+
+        .log-entry {
+            padding: 5px;
+            border-bottom: 1px solid #2b4a75;
+        }
+        .log-entry.info { color: #00e5ff; }
+        .log-entry.warning { color: #ff9800; }
+
+        .info-panel {
             position: fixed;
             top: 50%;
             left: 50%;
@@ -158,25 +734,24 @@
             border: 2px solid #00e5ff;
             z-index: 2500;
             display: none;
-            width: 400px;
+            width: 500px;
             max-width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
         }
-        
-        .control-panel.active {
-            display: block;
-        }
-        
-        .control-group {
+        .info-panel.active { display: block; }
+        .info-panel-header { display: flex; justify-content: space-between; margin-bottom: 15px; border-bottom: 1px solid #2b4a75; padding-bottom: 10px; }
+        .close-info { font-size: 24px; cursor: pointer; }
+
+        .form-group {
             margin-bottom: 15px;
         }
-        
-        .control-group label {
+        .form-group label {
             display: block;
             margin-bottom: 5px;
             color: #00e5ff;
         }
-        
-        .control-input {
+        .form-group select, .form-group input {
             width: 100%;
             padding: 8px;
             background: #2b4a75;
@@ -184,878 +759,553 @@
             border-radius: 5px;
             color: #fff;
         }
-        
-        /* 历史数据表格 */
-        .history-table {
-            width: 100%;
-            font-size: 12px;
-            margin-top: 10px;
-        }
-        
-        .history-table th,
-        .history-table td {
-            padding: 5px;
-            text-align: left;
-            border-bottom: 1px solid #2b4a75;
-        }
+
+        .chart-wrapper { margin-top: 15px; }
+        canvas { max-height: 200px; }
+
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: #1e3a5f; }
+        ::-webkit-scrollbar-thumb { background: #00e5ff; border-radius: 3px; }
     </style>
 </head>
 <body>
     <div class="dashboard">
-        <!-- 顶部导航栏 - 添加刷新按钮 -->
         <div class="top-nav">
-            <div class="logo">
-                <span style="font-size: 24px;">🚁📦</span>
-                <h1>无人机+物流柜 数字孪生监控系统</h1>
-            </div>
+            <div class="logo"><span style="font-size: 24px;">🚁📦</span><h1>无人机+物流柜 数字孪生监控系统</h1></div>
             <div class="stats">
-                <div class="stat-item">
-                    <span class="stat-label">在线设备</span>
-                    <span class="stat-value" id="onlineCount">45/50</span>
-                </div>
-                <div class="stat-item">
-                    <span class="stat-label">告警总数</span>
-                    <span class="stat-value" style="color: #f44336;" id="alarmCount">12</span>
-                </div>
-                <div class="stat-item">
-                    <span class="stat-label">今日任务</span>
-                    <span class="stat-value" id="taskCount">156</span>
-                </div>
-                <div class="stat-item">
-                    <span class="stat-label">成功率</span>
-                    <span class="stat-value" style="color: #4caf50;" id="successRate">98.5%</span>
-                </div>
+                <div class="stat-item"><span class="stat-label">在线设备</span><span class="stat-value" id="onlineCount">8/8</span></div>
+                <div class="stat-item"><span class="stat-label">告警总数</span><span class="stat-value" style="color: #f44336;" id="alarmCount">3</span></div>
+                <div class="stat-item"><span class="stat-label">今日任务</span><span class="stat-value" id="taskCount">156</span></div>
+                <div class="stat-item"><span class="stat-label">成功率</span><span class="stat-value" style="color: #4caf50;" id="successRate">98.5%</span></div>
             </div>
-            <div style="display: flex; gap: 10px;">
-                <button class="refresh-btn" onclick="refreshAllData()">🔄 刷新</button>
-                <div class="time">
-                    <span id="current-time"></span>
-                </div>
-            </div>
+            <div style="display: flex; gap: 10px;"><button class="refresh-btn" onclick="refreshAllData()">🔄 刷新</button><div class="time"><span id="current-time"></span></div></div>
         </div>
 
-        <!-- 左侧面板 - 设备筛选（添加控制按钮） -->
+        <!-- 左侧面板 -->
         <div class="left-panel">
             <div class="filter-section">
-                <div class="filter-title">区域筛选</div>
-                <div class="filter-item active" onclick="filterByArea('all')">全部区域 (45)</div>
-                <div class="filter-item" onclick="filterByArea('辽宁朝阳')">辽宁朝阳 (2)</div>
-                <div class="filter-item" onclick="filterByArea('苏州')">苏州 (1)</div>
-                <div class="filter-item" onclick="filterByArea('衢州')">衢州 (1)</div>
-                <div class="filter-item" onclick="filterByArea('雄安')">雄安 (1)</div>
+                <div class="filter-title">📍 区域筛选</div>
+                <div class="filter-item active" onclick="filterByArea('all', this)"><span>🌏 全部区域</span><span class="filter-count">8个设备</span></div>
+                <div class="filter-item" onclick="filterByArea('辽宁朝阳', this)"><span>🏔️ 辽宁朝阳</span><span class="filter-count">4个设备</span></div>
+                <div class="filter-item" onclick="filterByArea('苏州', this)"><span>🏯 苏州</span><span class="filter-count">2个设备</span></div>
+                <div class="filter-item" onclick="filterByArea('衢州', this)"><span>🏞️ 衢州</span><span class="filter-count">1个设备</span></div>
+                <div class="filter-item" onclick="filterByArea('雄安', this)"><span>🏗️ 雄安新区</span><span class="filter-count">1个设备</span></div>
             </div>
-
             <div class="filter-section">
-                <div class="filter-title">设备类型</div>
-                <div class="filter-item active" onclick="filterByType('all')">全部设备</div>
-                <div class="filter-item" onclick="filterByType('cabinet')">物流柜 (5)</div>
-                <div class="filter-item" onclick="filterByType('uav')">无人机 (3)</div>
+                <div class="filter-title">🔧 设备类型</div>
+                <div class="filter-item active" onclick="filterByType('all', this)"><span>📱 全部设备</span><span class="filter-count">8个</span></div>
+                <div class="filter-item" onclick="filterByType('cabinet', this)"><span>📦 物流柜</span><span class="filter-count">5个</span></div>
+                <div class="filter-item" onclick="filterByType('uav', this)"><span>🚁 无人机</span><span class="filter-count">3个</span></div>
             </div>
-
             <div class="filter-section">
-                <div class="filter-title">设备列表 <button class="refresh-btn" style="float: right; padding: 2px 8px;" onclick="refreshDeviceList()">刷新</button></div>
-                <div class="device-list" id="deviceList">
-                    <!-- 动态生成设备列表 -->
-                </div>
+                <div class="filter-title">📋 设备列表<button class="refresh-btn" style="padding: 2px 8px; margin-left: 10px;" onclick="refreshDeviceList()">刷新</button></div>
+                <div class="device-list" id="deviceList"></div>
             </div>
         </div>
 
-        <!-- 中间中国地图区域 -->
+        <!-- 中间中国地图区域 - 百度地图 -->
         <div class="center-panel">
             <div id="china-map"></div>
+            <div class="map-controls">
+                <button class="map-control-btn" id="map-zoom-in">+</button>
+                <button class="map-control-btn" id="map-zoom-out">-</button>
+                <button class="map-control-btn" id="map-reset">⟲</button>
+            </div>
             <div class="map-overlay">
-                <div>🗺️ 中国地图 | 缩放: 5x | 数据中心: 中国</div>
-                <div style="margin-top: 5px; color: #00e5ff;" id="mapStats">柜机: 5 | 无人机: 3 | 航迹: 2</div>
-                <div style="margin-top: 5px;">最后更新: <span id="lastUpdateTime">--:--:--</span></div>
+                <div>🗺️ 中国地图 | 可缩放/拖拽</div>
+                <div style="margin-top: 5px; color: #00e5ff;" id="mapStats">柜机: 5 | 无人机: 3</div>
             </div>
             <div class="map-legend">
-                <div class="legend-item">
-                    <span class="legend-dot cabinet"></span>
-                    <span>物流柜机</span>
-                </div>
-                <div class="legend-item">
-                    <span class="legend-dot uav"></span>
-                    <span>无人机</span>
-                </div>
+                <div class="legend-item"><span class="legend-dot cabinet"></span><span>物流柜机 (5个)</span></div>
+                <div class="legend-item"><span class="legend-dot uav"></span><span>无人机 (3架)</span></div>
             </div>
         </div>
 
-        <!-- 右侧面板 - 数据看板（添加图表） -->
+        <!-- 右侧面板 -->
         <div class="right-panel">
             <div class="kpi-card">
-                <div style="color: #00e5ff; margin-bottom: 10px;">今日数据总览</div>
+                <div style="color: #00e5ff; margin-bottom: 10px;">📊 今日数据总览</div>
                 <div class="kpi-row">
-                    <div class="kpi-item">
-                        <div class="kpi-value" id="todayOrders">156</div>
-                        <div class="kpi-label">总单量</div>
-                    </div>
-                    <div class="kpi-item">
-                        <div class="kpi-value" id="droneDeliveries">98</div>
-                        <div class="kpi-label">无人机投递</div>
-                    </div>
-                    <div class="kpi-item">
-                        <div class="kpi-value" id="successRateKpi">98.5%</div>
-                        <div class="kpi-label">成功率</div>
-                    </div>
+                    <div class="kpi-item"><div class="kpi-value">156</div><div class="kpi-label">总单量</div></div>
+                    <div class="kpi-item"><div class="kpi-value">98</div><div class="kpi-label">无人机投递</div></div>
+                    <div class="kpi-item"><div class="kpi-value">98.5%</div><div class="kpi-label">成功率</div></div>
                 </div>
                 <div class="kpi-row">
-                    <div class="kpi-item">
-                        <div class="kpi-value" id="onlineCabinets">5</div>
-                        <div class="kpi-label">在线柜机</div>
-                    </div>
-                    <div class="kpi-item">
-                        <div class="kpi-value" id="onlineUavs">3</div>
-                        <div class="kpi-label">在线无人机</div>
-                    </div>
-                    <div class="kpi-item">
-                        <div class="kpi-value" id="slotUsageRate">82%</div>
-                        <div class="kpi-label">格口利用率</div>
-                    </div>
+                    <div class="kpi-item"><div class="kpi-value" id="onlineCabinets">5</div><div class="kpi-label">在线柜机</div></div>
+                    <div class="kpi-item"><div class="kpi-value" id="onlineUavs">3</div><div class="kpi-label">在线无人机</div></div>
+                    <div class="kpi-item"><div class="kpi-value" id="slotUsageRate">63%</div><div class="kpi-label">格口利用率</div></div>
                 </div>
             </div>
-
-            <!-- 添加实时趋势图表 -->
-            <div class="kpi-card">
-                <div style="color: #00e5ff; margin-bottom: 10px;">📈 实时数据趋势 (最近1小时)</div>
-                <div class="chart-wrapper">
-                    <canvas id="trendChart" width="300" height="150"></canvas>
-                </div>
-            </div>
-
-            <div class="kpi-card">
-                <div style="color: #00e5ff; margin-bottom: 10px;">⚠️ 实时告警 <span style="font-size: 11px; color: #f44336;" id="criticalAlarmCount">(3严重)</span></div>
-                <div class="alarm-scroll" id="alarmList">
-                    <!-- 动态生成告警列表 -->
-                </div>
-            </div>
-
-            <div class="kpi-card">
-                <div style="color: #00e5ff; margin-bottom: 10px;">📊 柜机使用率排行</div>
-                <div id="cabinetRanking">
-                    <!-- 动态生成 -->
-                </div>
-                <button class="btn btn-outline" style="width: 100%; margin-top: 10px;" onclick="exportRankingReport()">导出报表</button>
-            </div>
-
-            <!-- 添加操作日志 -->
-            <div class="kpi-card">
-                <div style="color: #00e5ff; margin-bottom: 10px;">📝 操作日志</div>
-                <div class="log-container" id="operationLogs">
-                    <!-- 动态生成日志 -->
-                </div>
-            </div>
+            <div class="kpi-card"><div style="color: #00e5ff;">📈 实时数据趋势</div><div class="chart-wrapper"><canvas id="trendChart"></canvas></div></div>
+            <div class="kpi-card"><div style="color: #00e5ff;">⚠️ 实时告警 <span id="criticalAlarmCount">(1严重)</span></div><div class="alarm-scroll" id="alarmList"></div></div>
+            <div class="kpi-card"><div style="color: #00e5ff;">📊 柜机使用率排行</div><div id="cabinetRanking"></div><button class="btn btn-outline" style="width:100%;margin-top:10px;" onclick="exportReport()">📥 导出报表</button></div>
+            <div class="kpi-card"><div style="color: #00e5ff;">📝 操作日志</div><div class="log-container" id="operationLogs"></div></div>
         </div>
 
-        <!-- 底部面板 - 任务调度中心（添加历史查询） -->
+        <!-- 底部任务面板 -->
         <div class="bottom-panel">
             <div class="tab-bar">
-                <div class="tab active" onclick="switchTaskTab('pending')">待执行 <span id="pendingCount">8</span></div>
-                <div class="tab" onclick="switchTaskTab('flying')">飞行中 <span id="flyingCount">3</span></div>
-                <div class="tab" onclick="switchTaskTab('completed')">已完成 <span id="completedCount">145</span></div>
-                <div class="tab" onclick="switchTaskTab('failed')">失败 <span id="failedCount">2</span></div>
-                <div style="margin-left: auto; display: flex; gap: 10px;">
-                    <div class="date-range">
-                        <input type="text" id="startDate" class="date-input" placeholder="开始日期">
-                        <input type="text" id="endDate" class="date-input" placeholder="结束日期">
-                    </div>
-                    <button class="btn btn-outline" onclick="queryHistoryTasks()">📅 历史查询</button>
-                    <button class="btn btn-primary" onclick="showNewTaskModal()">➕ 新建任务</button>
-                    <button class="btn btn-outline" onclick="exportTaskReport()">📊 导出报表</button>
-                </div>
+                <div class="tab active" onclick="switchTaskTab('pending', this)">⏳ 待执行任务 <span class="task-badge" id="pendingCount">2</span></div>
+                <div class="tab" onclick="switchTaskTab('flying', this)">✈️ 执行中任务 <span class="task-badge" id="flyingCount">2</span></div>
+                <div class="tab" onclick="switchTaskTab('completed', this)">✅ 已完成任务 <span class="task-badge" id="completedCount">1</span></div>
+                <div style="margin-left: auto;"><button class="btn btn-primary" onclick="showNewTaskModal()">➕ 新建投递任务</button></div>
             </div>
-
             <div style="overflow-x: auto;">
                 <table class="task-table">
                     <thead>
-                        <tr>
-                            <th>任务号</th>
-                            <th>无人机</th>
-                            <th>目标柜机</th>
-                            <th>地点</th>
-                            <th>状态</th>
-                            <th>进度</th>
-                            <th>计划时间</th>
-                            <th>操作</th>
-                        </tr>
+                        <tr><th>任务编号</th><th>无人机</th><th>目标柜机</th><th>目标格口</th><th>投递物品</th><th>预计耗时</th><th>状态</th><th>创建时间</th><th>操作</th> </tr>
                     </thead>
-                    <tbody id="taskList">
-                        <!-- 动态生成任务列表 -->
-                    </tbody>
+                    <tbody id="taskList"></tbody>
                 </table>
             </div>
         </div>
     </div>
 
-    <!-- 监控状态指示器 -->
-    <div class="monitor-status">
-        <div class="status-led" id="monitorLed"></div>
-        <span>监控系统运行中</span>
-        <span id="monitorStatusText">实时数据</span>
-    </div>
-
-    <!-- 通知容器 -->
+    <div class="monitor-status"><div class="status-led"></div><span>监控系统运行中</span><span>实时数据</span></div>
     <div id="notification" class="notification"></div>
-
-    <!-- 设备控制面板 -->
-    <div id="controlPanel" class="control-panel">
-        <h3 style="color: #00e5ff; margin-bottom: 15px;">设备控制</h3>
-        <div class="control-group">
-            <label>设备ID</label>
-            <input type="text" id="controlDeviceId" class="control-input" readonly>
-        </div>
-        <div class="control-group">
-            <label>控制指令</label>
-            <select id="controlCommand" class="control-input">
-                <option value="open_slot">开锁</option>
-                <option value="close_slot">关锁</option>
-                <option value="reboot">重启设备</option>
-                <option value="sync_time">同步时间</option>
-                <option value="upgrade">固件升级</option>
-            </select>
-        </div>
-        <div class="control-group" id="slotParam" style="display: none;">
-            <label>格口号</label>
-            <input type="number" id="slotNumber" class="control-input" min="1" max="20" placeholder="1-20">
-        </div>
-        <div class="action-buttons">
-            <button class="btn btn-primary" onclick="sendCommand()">发送指令</button>
-            <button class="btn btn-outline" onclick="closeControlPanel()">取消</button>
-        </div>
-    </div>
+    <div id="infoPanel" class="info-panel"><div class="info-panel-header"><h3 id="infoPanelTitle" style="color:#00e5ff;">信息</h3><span class="close-info" onclick="closeInfoPanel()">&times;</span></div><div id="infoPanelContent"></div></div>
+    <div class="modal" id="cabinetModal"><div class="modal-content"><div class="modal-header"><h2>📦 柜机 <span id="modalCabinetId">C001</span> 孪生详情</h2><span class="modal-close" onclick="closeModal()">&times;</span></div><div style="display:flex;gap:20px;"><div style="flex:1;"><div class="info-item"><div class="info-label">柜机名称</div><div class="info-value" id="modalCabinetName"></div></div><div class="info-item"><div class="info-label">安装地址</div><div class="info-value" id="modalCabinetAddress"></div></div></div><div style="flex:1;"><div class="info-item"><div class="info-label">空闲格口</div><div class="info-value" id="modalFreeSlots"></div></div><div class="info-item"><div class="info-label">实时电压</div><div class="info-value" id="detailVoltage"></div></div></div></div><div class="chart-title">🎯 3D格口状态</div><div class="cabinet-3d" id="cabinetSlots3D"></div><div class="action-buttons"><button class="btn btn-primary" onclick="remoteOpenSlot()">🔓 远程开锁</button><button class="btn btn-outline" onclick="refreshStatus()">🔄 刷新状态</button></div></div></div>
 
     <script>
-        // ==================== 全局变量 ====================
-        let currentMap = null;
-        let markers = [];
-        let trendChart = null;
-        let monitoringInterval = null;
-        let simulationData = {
-            voltage: 220.5,
-            signal: 98,
-            temperature: 25.3
-        };
-        
-        // 设备数据
-        let devices = {
-            cabinets: [
-                { id: 'C001', name: '辽宁朝阳音乐喷泉广场', pos: [41.57, 120.45], status: 'online', used: 12, total: 20, voltage: 220.5, signal: 98, temperature: 25.3 },
-                { id: 'C002', name: '辽宁朝阳人民公园', pos: [41.58, 120.46], status: 'online', used: 18, total: 20, voltage: 219.8, signal: 95, temperature: 26.1 },
-                { id: 'C003', name: '苏州市低空经济发展展示馆', pos: [31.30, 120.58], status: 'online', used: 15, total: 20, voltage: 221.2, signal: 97, temperature: 24.8 },
-                { id: 'C004', name: '衢州市低空经济展示馆', pos: [28.94, 118.87], status: 'online', used: 8, total: 20, voltage: 220.1, signal: 92, temperature: 25.5 },
-                { id: 'C005', name: '雄安新区', pos: [38.98, 115.98], status: 'online', used: 10, total: 20, voltage: 220.3, signal: 96, temperature: 25.0 }
-            ],
-            uavs: [
-                { id: 'UAV-001', name: 'UAV-001', pos: [41.59, 120.47], status: 'flying', battery: 85, altitude: 50 },
-                { id: 'UAV-002', name: 'UAV-002', pos: [31.32, 120.60], status: 'flying', battery: 72, altitude: 45 },
-                { id: 'UAV-003', name: 'UAV-003', pos: [38.99, 115.99], status: 'idle', battery: 96, altitude: 0 }
-            ]
-        };
-        
-        // 告警数据
-        let alarms = [
-            { level: 'critical', type: '离线', device: '柜机 C003', content: '柜机 C003 离线超过5分钟', time: '10:23', status: 'active' },
-            { level: 'warning', type: '锁故障', device: '柜机 C015', content: '柜机 C015 格口5锁故障', time: '10:15', status: 'active' },
-            { level: 'warning', type: '低电量', device: '无人机 U003', content: '无人机 U003 电量低于30%', time: '10:08', status: 'active' },
-            { level: 'critical', type: '通信中断', device: '无人机 U005', content: '无人机 U005 通信中断', time: '09:55', status: 'active' },
-            { level: 'info', type: '满柜预警', device: '柜机 C021', content: '柜机 C021 即将满柜', time: '09:42', status: 'active' }
+        // ==================== 设备数据 ====================
+        const locations = [
+            { id: 'C001', name: '辽宁朝阳音乐喷泉广场', coord: [120.45, 41.57], area: '辽宁朝阳', type: 'cabinet', used: 12, total: 20, free: 8, voltage: 220.5, signal: 98, temperature: 25.3 },
+            { id: 'C002', name: '辽宁朝阳人民公园', coord: [120.46, 41.58], area: '辽宁朝阳', type: 'cabinet', used: 18, total: 20, free: 2, voltage: 219.8, signal: 95, temperature: 26.1 },
+            { id: 'C003', name: '苏州市低空经济发展展示馆', coord: [120.58, 31.30], area: '苏州', type: 'cabinet', used: 15, total: 20, free: 5, voltage: 221.2, signal: 97, temperature: 24.8 },
+            { id: 'C004', name: '衢州市低空经济展示馆', coord: [118.87, 28.94], area: '衢州', type: 'cabinet', used: 8, total: 20, free: 12, voltage: 220.1, signal: 92, temperature: 25.5 },
+            { id: 'C005', name: '雄安新区', coord: [115.98, 38.98], area: '雄安', type: 'cabinet', used: 10, total: 20, free: 10, voltage: 220.3, signal: 96, temperature: 25.0 },
+            { id: 'UAV-001', name: '无人机 U001', coord: [120.47, 41.59], area: '辽宁朝阳', type: 'uav', battery: 85, altitude: 50, status: 'flying', task: '投递C001' },
+            { id: 'UAV-002', name: '无人机 U002', coord: [120.60, 31.32], area: '苏州', type: 'uav', battery: 72, altitude: 45, status: 'flying', task: '投递C003' },
+            { id: 'UAV-003', name: '无人机 U003', coord: [115.99, 38.99], area: '雄安', type: 'uav', battery: 96, altitude: 0, status: 'idle', task: '待命' }
         ];
-        
-        // 操作日志
-        let operationLogs = [];
-        
+
         // 任务数据
         let tasks = {
             pending: [
-                { id: 'T002', uav: 'UAV-002', cabinet: 'C003', location: '苏州市低空经济发展展示馆', status: 'pending', time: '10:45', progress: 0 }
+                { id: 'TASK-001', uav: 'UAV-003', cabinet: 'C004', slot: 5, item: '快递包裹', duration: '8分钟', status: 'pending', createTime: '10:30', description: '普通快递包裹，需要签收' },
+                { id: 'TASK-002', uav: 'UAV-001', cabinet: 'C002', slot: 3, item: '医疗物资', duration: '12分钟', status: 'pending', createTime: '10:35', description: '紧急医疗物资，需优先处理' }
             ],
             flying: [
-                { id: 'T001', uav: 'UAV-001', cabinet: 'C001', location: '辽宁朝阳音乐喷泉广场', status: 'flying', time: '10:30', progress: 65 }
+                { id: 'TASK-003', uav: 'UAV-001', cabinet: 'C001', slot: 8, item: '重要文件', duration: '5分钟', status: 'flying', createTime: '10:20', progress: 65, description: '合同文件，需本人签收' },
+                { id: 'TASK-004', uav: 'UAV-002', cabinet: 'C003', slot: 12, item: '电子产品', duration: '8分钟', status: 'flying', createTime: '10:25', progress: 40, description: '手机配件，轻拿轻放' }
             ],
             completed: [
-                { id: 'T003', uav: 'UAV-003', cabinet: 'C005', location: '雄安新区', status: 'success', time: '10:15', progress: 100 }
-            ],
-            failed: [
-                { id: 'T004', uav: 'UAV-001', cabinet: 'C004', location: '衢州市低空经济展示馆', status: 'failed', time: '09:50', progress: 45 }
+                { id: 'TASK-005', uav: 'UAV-003', cabinet: 'C005', slot: 6, item: '商务文件', duration: '7分钟', status: 'success', createTime: '09:30', completeTime: '09:37', description: '商务合作协议' }
             ]
         };
-        
-        // ==================== 初始化函数 ====================
-        
+
+        let alarms = [
+            { level: 'critical', device: '柜机 C003', content: '柜机 C003 通信延迟较高', time: '10:23', status: 'active' },
+            { level: 'warning', device: '无人机 U003', content: '无人机 U003 电量低于30%', time: '10:08', status: 'active' }
+        ];
+
+        let operationLogs = [];
+        let currentFilter = { area: 'all', type: 'all' };
+        let trendChart = null;
+        let map = null;
+        let markers = [];
+
         // 更新当前时间
         function updateTime() {
-            const now = new Date();
-            document.getElementById('current-time').textContent = now.toLocaleString('zh-CN');
+            document.getElementById('current-time').textContent = new Date().toLocaleString('zh-CN');
         }
         setInterval(updateTime, 1000);
         updateTime();
+
+        // 初始化百度地图
+        function initMap() {
+            try {
+                map = new BMap.Map('china-map');
+                map.centerAndZoom(new BMap.Point(108.0, 35.0), 5);
+                map.enableScrollWheelZoom(true);
+                map.enableDragging(true);
+                map.setMapStyle({ style: 'dark' });
+                
+                // 添加地图控件
+                map.addControl(new BMap.NavigationControl({ anchor: BMAP_ANCHOR_TOP_RIGHT }));
+                
+                addMarkersToMap();
+                
+                document.getElementById('mapStats').innerHTML = '柜机: 5 | 无人机: 3 | 可缩放/拖拽';
+                
+                // 绑定地图控制按钮
+                document.getElementById('map-zoom-in').onclick = () => map.zoomIn();
+                document.getElementById('map-zoom-out').onclick = () => map.zoomOut();
+                document.getElementById('map-reset').onclick = () => {
+                    map.centerAndZoom(new BMap.Point(108.0, 35.0), 5);
+                    map.setMapStyle({ style: 'dark' });
+                };
+                
+                addLog('百度地图初始化成功', 'info');
+                showNotification('地图加载成功，支持缩放拖拽', 'info');
+            } catch (error) {
+                console.error('地图初始化失败:', error);
+                document.getElementById('china-map').innerHTML = '<div style="color:white;text-align:center;padding:100px;">地图加载中，请稍后...</div>';
+                setTimeout(initMap, 2000);
+            }
+        }
+
+        // 添加标记点到地图
+        function addMarkersToMap() {
+            if (!map) return;
+            
+            // 清除现有标记
+            markers.forEach(m => map.removeOverlay(m));
+            markers = [];
+            
+            let filtered = locations.filter(l => {
+                if (currentFilter.area !== 'all' && l.area !== currentFilter.area) return false;
+                if (currentFilter.type !== 'all' && l.type !== currentFilter.type) return false;
+                return true;
+            });
+            
+            filtered.forEach(loc => {
+                const point = new BMap.Point(loc.coord[0], loc.coord[1]);
+                const isCabinet = loc.type === 'cabinet';
+                const color = isCabinet ? '#4caf50' : '#ff9800';
+                
+                // 创建自定义图标
+                const icon = new BMap.Icon(
+                    `data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="30" height="30" viewBox="0 0 30 30"><${isCabinet ? 'circle cx="15" cy="15" r="12"' : 'polygon points="15,3 27,24 3,24"'} fill="${color}" stroke="white" stroke-width="2"/><filter id="glow"><feGaussianBlur stdDeviation="3"/></filter></svg>`,
+                    new BMap.Size(30, 30),
+                    { anchor: new BMap.Size(15, 15) }
+                );
+                
+                const marker = new BMap.Marker(point, { icon: icon });
+                
+                // 添加标签
+                const label = new BMap.Label(
+                    `${loc.name}\n${isCabinet ? `${loc.used}/${loc.total}格口` : `${loc.battery}%电量`}`,
+                    { offset: new BMap.Size(20, -30) }
+                );
+                label.setStyle({
+                    color: '#fff',
+                    background: 'rgba(16,32,56,0.9)',
+                    border: `1px solid ${color}`,
+                    fontSize: '11px',
+                    padding: '4px 8px',
+                    borderRadius: '4px'
+                });
+                marker.setLabel(label);
+                
+                marker.addEventListener('click', () => {
+                    if (isCabinet) showCabinetDetail(loc.id);
+                    else showUavDetail(loc.id);
+                });
+                
+                map.addOverlay(marker);
+                markers.push(marker);
+            });
+        }
+
+        // 刷新设备列表
+        function refreshDeviceList() {
+            const container = document.getElementById('deviceList');
+            let filtered = locations.filter(l => {
+                if (currentFilter.area !== 'all' && l.area !== currentFilter.area) return false;
+                if (currentFilter.type !== 'all' && l.type !== currentFilter.type) return false;
+                return true;
+            });
+            container.innerHTML = filtered.map(loc => {
+                if (loc.type === 'cabinet') {
+                    return `<div class="device-card cabinet" onclick="showCabinetDetail('${loc.id}')"><div class="device-header"><span class="device-name">📦 柜机 ${loc.id}</span><span class="device-status status-online">在线</span></div><div class="device-info"><span>${loc.name}</span><span>格口: ${loc.used}/${loc.total} | 空闲: ${loc.free}</span><span>电压: ${loc.voltage}V | 信号: ${loc.signal}%</span></div></div>`;
+                } else {
+                    return `<div class="device-card uav" onclick="showUavDetail('${loc.id}')"><div class="device-header"><span class="device-name">🚁 无人机 ${loc.id}</span><span class="device-status ${loc.status === 'flying' ? 'status-flying' : 'status-online'}">${loc.status === 'flying' ? '飞行中' : '待命'}</span></div><div class="device-info"><span>电量: ${loc.battery}% | 高度: ${loc.altitude}m</span><span>当前位置: ${loc.name}</span><span>当前任务: ${loc.task}</span></div></div>`;
+                }
+            }).join('');
+        }
+
+        // 刷新任务列表
+        function refreshTaskList() {
+            const container = document.getElementById('taskList');
+            const activeTab = document.querySelector('.tab-bar .tab.active');
+            let currentTab = activeTab ? activeTab.innerText.split(' ')[0] : '待执行任务';
+            let taskArray = [];
+            if (currentTab === '待执行任务') taskArray = tasks.pending;
+            else if (currentTab === '执行中任务') taskArray = tasks.flying;
+            else taskArray = tasks.completed;
+            
+            container.innerHTML = taskArray.map(task => `
+                <tr class="task-row" onclick="showTaskDetail('${task.id}')">
+                    <td><strong>${task.id}</strong>${task.progress ? `<br><span style="font-size:10px;color:#ff9800;">${task.progress}%</span>` : ''}</td>
+                    <td>${task.uav}</td>
+                    <td>${task.cabinet}</td>
+                    <td>${task.slot || '-'}</td>
+                    <td>${task.item}</td>
+                    <td>${task.duration || '-'}</td>
+                    <td><span class="task-status status-${task.status}">${task.status === 'pending' ? '待执行' : task.status === 'flying' ? '执行中' : '已完成'}</span>
+                        ${task.progress ? `<div class="progress-bar"><div class="progress-fill" style="width:${task.progress}%"></div></div>` : ''}
+                     </td>
+                    <td>${task.createTime}</td>
+                    <td>
+                        <button class="btn btn-outline" onclick="event.stopPropagation(); showTaskDetail('${task.id}')">📋 详情</button>
+                        ${task.status === 'pending' ? `<button class="btn btn-primary" style="margin-left:5px;" onclick="event.stopPropagation(); startTask('${task.id}')">▶ 开始</button>` : ''}
+                     </td>
+                </tr>
+            `).join('');
+            document.getElementById('pendingCount').innerHTML = tasks.pending.length;
+            document.getElementById('flyingCount').innerHTML = tasks.flying.length;
+            document.getElementById('completedCount').innerHTML = tasks.completed.length;
+        }
+
+        // 刷新告警列表
+        function refreshAlarmList() {
+            const container = document.getElementById('alarmList');
+            container.innerHTML = alarms.filter(a => a.status === 'active').map(a => `
+                <div class="alarm-item" onclick="ackAlarm('${a.device}')">
+                    <span class="alarm-level level-${a.level}"></span>
+                    <span>[${a.level === 'critical' ? '严重' : '一般'}] ${a.content}</span>
+                    <span style="margin-left:auto;">${a.time}</span>
+                </div>
+            `).join('');
+            document.getElementById('alarmCount').textContent = alarms.filter(a => a.status === 'active').length;
+            document.getElementById('criticalAlarmCount').innerHTML = `(${alarms.filter(a => a.level === 'critical' && a.status === 'active').length}严重)`;
+        }
+
+        // 刷新柜机排行
+        function refreshCabinetRanking() {
+            const container = document.getElementById('cabinetRanking');
+            const cabinets = locations.filter(l => l.type === 'cabinet');
+            const sorted = [...cabinets].sort((a, b) => (b.used/b.total) - (a.used/a.total));
+            container.innerHTML = sorted.map(cab => {
+                const rate = (cab.used / cab.total * 100).toFixed(0);
+                const color = rate >= 80 ? '#ff9800' : rate >= 50 ? '#4caf50' : '#2196f3';
+                return `<div style="margin: 10px 0;"><div style="display:flex;justify-content:space-between;"><span><strong>${cab.id}</strong> ${cab.name.split(' ')[0]}</span><span>${rate}%</span></div><div style="width:100%;height:6px;background:#2b4a75;"><div style="width:${rate}%;height:100%;background:${color};border-radius:3px;"></div></div><div style="font-size:11px;color:#8a9bb5;margin-top:4px;">已用: ${cab.used}/${cab.total} | 空闲: ${cab.free}</div></div>`;
+            }).join('');
+            const totalUsed = cabinets.reduce((s, c) => s + c.used, 0);
+            const totalSlots = cabinets.reduce((s, c) => s + c.total, 0);
+            document.getElementById('slotUsageRate').textContent = `${((totalUsed/totalSlots)*100).toFixed(0)}%`;
+            document.getElementById('onlineCabinets').textContent = cabinets.filter(c => c.status !== 'offline').length;
+            document.getElementById('onlineUavs').textContent = locations.filter(l => l.type === 'uav' && l.status !== 'offline').length;
+            document.getElementById('onlineCount').textContent = `${parseInt(document.getElementById('onlineCabinets').textContent) + parseInt(document.getElementById('onlineUavs').textContent)}/8`;
+        }
+
+        // 刷新所有数据
+        function refreshAllData() { 
+            addLog('手动刷新所有数据', 'info'); 
+            refreshDeviceList(); 
+            refreshTaskList(); 
+            refreshAlarmList(); 
+            refreshCabinetRanking();
+            addMarkersToMap();
+            showNotification('数据已更新', 'info'); 
+        }
+
+        // 生成3D格口
+        function generateSlots(usedCount) {
+            const container = document.getElementById('cabinetSlots3D');
+            if (!container) return;
+            container.innerHTML = '';
+            for (let i = 1; i <= 20; i++) {
+                const slot = document.createElement('div');
+                slot.className = 'slot-3d ' + (i <= usedCount ? 'used' : 'free');
+                slot.innerHTML = `<span class="slot-number">${i}</span><span class="slot-status">${i <= usedCount ? '占用' : '空闲'}</span>`;
+                slot.onclick = () => showNotification(`格口 ${i}: ${i <= usedCount ? '已占用' : '空闲'}`, 'info');
+                container.appendChild(slot);
+            }
+        }
+
+        // 显示柜机详情
+        function showCabinetDetail(id) {
+            const cab = locations.find(l => l.id === id);
+            if (!cab) return;
+            document.getElementById('modalCabinetId').textContent = id;
+            document.getElementById('modalCabinetName').textContent = cab.name + '柜机';
+            document.getElementById('modalCabinetAddress').textContent = cab.name;
+            document.getElementById('modalFreeSlots').textContent = cab.free + '个';
+            document.getElementById('detailVoltage').textContent = cab.voltage + 'V';
+            generateSlots(cab.used);
+            document.getElementById('cabinetModal').classList.add('active');
+            addLog(`查看柜机详情: ${id}`, 'info');
+        }
+
+        // 显示无人机详情
+        function showUavDetail(id) { 
+            const uav = locations.find(l => l.id === id); 
+            if(uav) showInfoPanel(`无人机 ${id} 详情`, `<div><strong>名称:</strong> ${uav.name}<br><strong>电量:</strong> ${uav.battery}%<br><strong>高度:</strong> ${uav.altitude}m<br><strong>状态:</strong> ${uav.status === 'flying' ? '飞行中' : '待命'}<br><strong>当前任务:</strong> ${uav.task}</div>`); 
+        }
+
+        // 开始任务
+        function startTask(taskId) { 
+            addLog(`开始任务: ${taskId}`, 'info'); 
+            showNotification(`任务 ${taskId} 已开始执行`, 'info'); 
+            const task = tasks.pending.find(t => t.id === taskId); 
+            if(task) { 
+                tasks.pending = tasks.pending.filter(t => t.id !== taskId); 
+                tasks.flying.push({...task, status: 'flying', progress: 0}); 
+                refreshTaskList(); 
+            } 
+        }
+
+        // 显示任务详情
+        function showTaskDetail(taskId) { 
+            const allTasks = [...tasks.pending, ...tasks.flying, ...tasks.completed]; 
+            const task = allTasks.find(t => t.id === taskId); 
+            if(task) {
+                let details = `<div>
+                    <strong>任务编号:</strong> ${task.id}<br>
+                    <strong>无人机:</strong> ${task.uav}<br>
+                    <strong>目标柜机:</strong> ${task.cabinet}<br>
+                    <strong>目标格口:</strong> ${task.slot}<br>
+                    <strong>投递物品:</strong> ${task.item}<br>
+                    <strong>预计耗时:</strong> ${task.duration}<br>
+                    <strong>创建时间:</strong> ${task.createTime}<br>
+                    <strong>状态:</strong> ${task.status === 'pending' ? '待执行' : task.status === 'flying' ? '执行中' : '已完成'}<br>
+                    <strong>物品描述:</strong> ${task.description || '无'}<br>`;
+                if (task.completeTime) details += `<strong>完成时间:</strong> ${task.completeTime}<br>`;
+                if (task.progress) details += `<strong>进度:</strong> ${task.progress}%<br>`;
+                details += `</div>`;
+                showInfoPanel(`任务详情 - ${task.id}`, details);
+            }
+        }
+
+        // 新建任务
+        function showNewTaskModal() {
+            const cabinets = locations.filter(l => l.type === 'cabinet').map(c => `<option value="${c.id}">${c.name} (空闲${c.free}格口)</option>`).join('');
+            const uavs = locations.filter(l => l.type === 'uav' && l.status !== 'flying').map(u => `<option value="${u.id}">${u.id} (电量${u.battery}%)</option>`).join('');
+            
+            showInfoPanel('新建投递任务', `
+                <div class="form-group">
+                    <label>选择无人机</label>
+                    <select id="newTaskUav">${uavs}</select>
+                </div>
+                <div class="form-group">
+                    <label>选择目标柜机</label>
+                    <select id="newTaskCabinet">${cabinets}</select>
+                </div>
+                <div class="form-group">
+                    <label>目标格口 (1-20)</label>
+                    <input type="number" id="newTaskSlot" min="1" max="20" value="1">
+                </div>
+                <div class="form-group">
+                    <label>投递物品</label>
+                    <input type="text" id="newTaskItem" placeholder="请输入物品名称" value="普通包裹">
+                </div>
+                <div class="form-group">
+                    <label>物品描述</label>
+                    <input type="text" id="newTaskDesc" placeholder="请输入物品描述" value="待投递包裹">
+                </div>
+                <button class="btn btn-primary" onclick="createNewTask()" style="width:100%">✅ 确认创建任务</button>
+            `);
+        }
+
+        // 创建新任务
+        function createNewTask() {
+            const uav = document.getElementById('newTaskUav')?.value || 'UAV-003';
+            const cabinet = document.getElementById('newTaskCabinet')?.value || 'C004';
+            const slot = parseInt(document.getElementById('newTaskSlot')?.value || 1);
+            const item = document.getElementById('newTaskItem')?.value || '普通包裹';
+            const desc = document.getElementById('newTaskDesc')?.value || '无描述';
+            
+            // 生成新任务ID
+            const newTaskId = `TASK-${String(Date.now()).slice(-6)}`;
+            const newTask = {
+                id: newTaskId,
+                uav: uav,
+                cabinet: cabinet,
+                slot: slot,
+                item: item,
+                duration: '约10分钟',
+                status: 'pending',
+                createTime: new Date().toLocaleTimeString().slice(0,5),
+                description: desc
+            };
+            
+            tasks.pending.push(newTask);
+            refreshTaskList();
+            closeInfoPanel();
+            addLog(`创建新任务: ${newTaskId}`, 'info');
+            showNotification(`✅ 任务 ${newTaskId} 创建成功，已添加到待执行列表`, 'info');
+        }
+
+        // 确认告警
+        function ackAlarm(device) { 
+            const a = alarms.find(a => a.device === device); 
+            if(a) { 
+                a.status = 'acknowledged'; 
+                refreshAlarmList(); 
+                showNotification(`已确认 ${device} 告警`, 'info'); 
+                addLog(`确认告警: ${device}`, 'info');
+            } 
+        }
+
+        // 筛选功能
+        function filterByArea(area, el) { 
+            document.querySelectorAll('.filter-section:first-child .filter-item').forEach(i => i.classList.remove('active')); 
+            el.classList.add('active'); 
+            currentFilter.area = area; 
+            addMarkersToMap();
+            refreshDeviceList(); 
+            showInfoPanel('区域筛选', `<div>已筛选: ${area === 'all' ? '全部区域' : area}<br>共 ${locations.filter(l => area === 'all' || l.area === area).length} 个设备</div>`); 
+        }
+        
+        function filterByType(type, el) { 
+            document.querySelectorAll('.filter-section:nth-child(2) .filter-item').forEach(i => i.classList.remove('active')); 
+            el.classList.add('active'); 
+            currentFilter.type = type; 
+            addMarkersToMap();
+            refreshDeviceList(); 
+            showInfoPanel('设备类型', `<div>已筛选: ${type === 'all' ? '全部设备' : type === 'cabinet' ? '物流柜' : '无人机'}<br>共 ${locations.filter(l => type === 'all' || l.type === type).length} 个设备</div>`); 
+        }
+        
+        function switchTaskTab(tab, el) { 
+            document.querySelectorAll('.tab-bar .tab').forEach(t => t.classList.remove('active')); 
+            el.classList.add('active'); 
+            refreshTaskList(); 
+        }
+        
+        // 其他辅助函数
+        function addLog(action, type, detail='') { 
+            operationLogs.unshift({time: new Date().toLocaleTimeString(), action, type}); 
+            if(operationLogs.length>50) operationLogs.pop(); 
+            document.getElementById('operationLogs').innerHTML = operationLogs.slice(0,20).map(l => `<div class="log-entry ${l.type}">[${l.time}] ${l.action}</div>`).join(''); 
+        }
+        
+        function showNotification(msg, type) { 
+            const n = document.getElementById('notification'); 
+            n.textContent = msg; 
+            n.classList.add('show'); 
+            setTimeout(() => n.classList.remove('show'), 3000); 
+        }
+        
+        function showInfoPanel(title, content) { 
+            document.getElementById('infoPanelTitle').textContent = title; 
+            document.getElementById('infoPanelContent').innerHTML = content; 
+            document.getElementById('infoPanel').classList.add('active'); 
+        }
+        
+        function closeInfoPanel() { document.getElementById('infoPanel').classList.remove('active'); }
+        function closeModal() { document.getElementById('cabinetModal').classList.remove('active'); }
+        function remoteOpenSlot() { addLog('远程开锁指令', 'info'); showNotification('开锁指令已发送', 'info'); }
+        function refreshStatus() { refreshAllData(); }
+        function exportReport() { showNotification('报表导出中...', 'info'); addLog('导出报表', 'info'); }
         
         // 初始化图表
         function initChart() {
             const ctx = document.getElementById('trendChart').getContext('2d');
             trendChart = new Chart(ctx, {
                 type: 'line',
-                data: {
-                    labels: Array.from({length: 12}, (_, i) => `${i*5}分钟前`),
-                    datasets: [
-                        {
-                            label: '电压 (V)',
-                            data: Array.from({length: 12}, () => 220 + Math.random() * 2),
-                            borderColor: '#00e5ff',
-                            backgroundColor: 'rgba(0, 229, 255, 0.1)',
-                            tension: 0.4,
-                            fill: true
-                        },
-                        {
-                            label: '信号强度 (%)',
-                            data: Array.from({length: 12}, () => 95 + Math.random() * 5),
-                            borderColor: '#ff9800',
-                            backgroundColor: 'rgba(255, 152, 0, 0.1)',
-                            tension: 0.4,
-                            fill: true
-                        }
-                    ]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: true,
-                    plugins: {
-                        legend: {
-                            labels: { color: '#8a9bb5' }
-                        }
-                    },
-                    scales: {
-                        x: { ticks: { color: '#8a9bb5' } },
-                        y: { ticks: { color: '#8a9bb5' } }
-                    }
-                }
+                data: { labels: ['09:00', '09:30', '10:00', '10:30', '11:00', '11:30'], datasets: [
+                    { label: '投递任务量', data: [12, 18, 25, 32, 38, 45], borderColor: '#00e5ff', tension: 0.4, fill: true, backgroundColor: 'rgba(0,229,255,0.1)' },
+                    { label: '成功率 (%)', data: [95, 96, 97, 98, 98, 98.5], borderColor: '#ff9800', tension: 0.4, fill: true, backgroundColor: 'rgba(255,152,0,0.1)' }
+                ]},
+                options: { responsive: true, maintainAspectRatio: true, plugins: { legend: { labels: { color: '#8a9bb5' } } }, scales: { x: { ticks: { color: '#8a9bb5' } }, y: { ticks: { color: '#8a9bb5' } } } }
             });
         }
-        
-        // 更新图表数据
-        function updateChart() {
-            if (!trendChart) return;
-            
-            const newVoltage = 220 + Math.random() * 3;
-            const newSignal = 94 + Math.random() * 6;
-            
-            trendChart.data.datasets[0].data.push(newVoltage);
-            trendChart.data.datasets[0].data.shift();
-            trendChart.data.datasets[1].data.push(newSignal);
-            trendChart.data.datasets[1].data.shift();
-            trendChart.update();
-        }
-        
-        // 添加操作日志
-        function addLog(action, type = 'info', detail = '') {
-            const log = {
-                time: new Date().toLocaleTimeString(),
-                action: action,
-                type: type,
-                detail: detail
-            };
-            operationLogs.unshift(log);
-            if (operationLogs.length > 50) operationLogs.pop();
-            renderLogs();
-        }
-        
-        // 渲染日志
-        function renderLogs() {
-            const container = document.getElementById('operationLogs');
-            if (!container) return;
-            container.innerHTML = operationLogs.slice(0, 20).map(log => `
-                <div class="log-entry ${log.type}">
-                    [${log.time}] ${log.action} ${log.detail}
-                </div>
-            `).join('');
-        }
-        
-        // 显示通知
-        function showNotification(message, type = 'info') {
-            const notification = document.getElementById('notification');
-            notification.textContent = message;
-            notification.style.borderLeftColor = type === 'error' ? '#f44336' : type === 'warning' ? '#ff9800' : '#00e5ff';
-            notification.classList.add('show');
-            setTimeout(() => {
-                notification.classList.remove('show');
-            }, 3000);
-        }
-        
-        // 刷新设备列表
-        function refreshDeviceList() {
-            const container = document.getElementById('deviceList');
-            if (!container) return;
-            
-            container.innerHTML = devices.cabinets.map(cabinet => `
-                <div class="device-card cabinet" onclick="showCabinetDetail('${cabinet.id}')">
-                    <div class="device-header">
-                        <span class="device-name">📦 柜机 ${cabinet.id}</span>
-                        <span class="device-status ${cabinet.status === 'online' ? 'status-online' : 'status-offline'}">
-                            ${cabinet.status === 'online' ? '在线' : '离线'}
-                        </span>
-                    </div>
-                    <div class="device-info">
-                        <span>${cabinet.name}</span>
-                        <span>格口: ${cabinet.used}/${cabinet.total} | 电压: ${cabinet.voltage}V</span>
-                    </div>
-                    <button class="btn btn-outline" style="margin-top: 8px; padding: 2px 8px;" onclick="event.stopPropagation(); showControlPanel('${cabinet.id}')">⚙️ 控制</button>
-                </div>
-            `).join('');
-            
-            devices.uavs.forEach(uav => {
-                container.innerHTML += `
-                    <div class="device-card uav" onclick="showUavDetail('${uav.id}')">
-                        <div class="device-header">
-                            <span class="device-name">🚁 无人机 ${uav.id}</span>
-                            <span class="device-status ${uav.status === 'flying' ? 'status-flying' : 'status-online'}">
-                                ${uav.status === 'flying' ? '飞行中' : (uav.status === 'idle' ? '待命' : '在线')}
-                            </span>
-                        </div>
-                        <div class="device-info">
-                            <span>电量: ${uav.battery}% | 高度: ${uav.altitude}m</span>
-                            <span>当前位置: ${uav.id === 'UAV-001' ? '辽宁朝阳' : uav.id === 'UAV-002' ? '苏州' : '雄安新区'}</span>
-                        </div>
-                        <button class="btn btn-outline" style="margin-top: 8px; padding: 2px 8px;" onclick="event.stopPropagation(); showControlPanel('${uav.id}')">⚙️ 控制</button>
-                    </div>
-                `;
-            });
-        }
-        
-        // 刷新告警列表
-        function refreshAlarmList() {
-            const container = document.getElementById('alarmList');
-            if (!container) return;
-            
-            container.innerHTML = alarms.filter(a => a.status === 'active').map(alarm => `
-                <div class="alarm-item" onclick="ackAlarm('${alarm.device}')">
-                    <span class="alarm-level level-${alarm.level}"></span>
-                    <span>[${alarm.level === 'critical' ? '严重' : alarm.level === 'warning' ? '一般' : '提醒'}] ${alarm.content}</span>
-                    <span style="margin-left: auto; font-size: 10px;">${alarm.time}</span>
-                </div>
-            `).join('');
-            
-            document.getElementById('alarmCount').textContent = alarms.filter(a => a.status === 'active').length;
-            const criticalCount = alarms.filter(a => a.level === 'critical' && a.status === 'active').length;
-            document.getElementById('criticalAlarmCount').textContent = `(${criticalCount}严重)`;
-        }
-        
-        // 刷新任务列表
-        function refreshTaskList() {
-            const container = document.getElementById('taskList');
-            if (!container) return;
-            
-            const currentTab = document.querySelector('.tab.active')?.textContent.split(' ')[0] || '待执行';
-            let taskArray = [];
-            
-            if (currentTab === '待执行') taskArray = tasks.pending;
-            else if (currentTab === '飞行中') taskArray = tasks.flying;
-            else if (currentTab === '已完成') taskArray = tasks.completed;
-            else taskArray = tasks.failed;
-            
-            container.innerHTML = taskArray.map(task => `
-                <tr class="task-row" onclick="showTaskDetail('${task.id}')">
-                    <td>${task.id}</td>
-                    <td>${task.uav}</td>
-                    <td>${task.cabinet}</td>
-                    <td>${task.location}</td>
-                    <td><span class="task-status status-${task.status}">${task.status === 'pending' ? '待执行' : task.status === 'flying' ? '飞行中' : task.status === 'success' ? '已完成' : '失败'}</span></td>
-                    <td>
-                        <div class="progress-bar">
-                            <div class="progress-fill" style="width: ${task.progress}%"></div>
-                        </div>
-                        ${task.progress}%
-                    </td>
-                    <td>${task.time}</td>
-                    <td>
-                        <button class="btn btn-outline" style="padding: 2px 8px;" onclick="event.stopPropagation(); showTaskDetail('${task.id}')">查看</button>
-                        ${task.status === 'pending' ? `<button class="btn btn-outline" style="padding: 2px 8px;" onclick="event.stopPropagation(); cancelTask('${task.id}')">取消</button>` : ''}
-                        ${task.status === 'failed' ? `<button class="btn btn-primary" style="padding: 2px 8px;" onclick="event.stopPropagation(); retryTask('${task.id}')">重试</button>` : ''}
-                    </td>
-                </tr>
-            `).join('');
-        }
-        
-        // 刷新柜机排行
-        function refreshCabinetRanking() {
-            const container = document.getElementById('cabinetRanking');
-            if (!container) return;
-            
-            const sorted = [...devices.cabinets].sort((a, b) => (b.used/b.total) - (a.used/a.total));
-            
-            container.innerHTML = sorted.map(cab => {
-                const rate = (cab.used / cab.total * 100).toFixed(0);
-                const color = rate >= 80 ? '#ff9800' : rate >= 50 ? '#4caf50' : '#2196f3';
-                return `
-                    <div style="margin: 10px 0;">
-                        <div style="display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 5px;">
-                            <span>柜机 ${cab.id} (${cab.name.split(' ')[0]})</span>
-                            <span>${rate}%</span>
-                        </div>
-                        <div style="width: 100%; height: 6px; background: #1e3a5f; border-radius: 3px;">
-                            <div style="width: ${rate}%; height: 100%; background: ${color}; border-radius: 3px;"></div>
-                        </div>
-                    </div>
-                `;
-            }).join('');
-        }
-        
-        // 刷新地图标记
-        function refreshMapMarkers() {
-            if (!currentMap) return;
-            
-            // 清除现有标记
-            markers.forEach(m => currentMap.removeLayer(m));
-            markers = [];
-            
-            // 添加柜机标记
-            devices.cabinets.forEach(cab => {
-                const icon = L.divIcon({
-                    className: 'custom-marker',
-                    html: `
-                        <div style="display: flex; flex-direction: column; align-items: center;">
-                            <div style="width: 30px; height: 30px; background: ${cab.status === 'online' ? '#4caf50' : '#f44336'}; border-radius: 50%; box-shadow: 0 0 20px ${cab.status === 'online' ? '#4caf50' : '#f44336'}; animation: pulse 2s infinite; border: 2px solid white;"></div>
-                            <div style="background: rgba(16,32,56,0.95); color: white; padding: 4px 8px; border-radius: 4px; font-size: 11px; white-space: nowrap; margin-top: 5px; border: 1px solid #00e5ff;">
-                                ${cab.name}<br>${cab.used}/${cab.total}
-                            </div>
-                        </div>
-                    `,
-                    iconSize: [100, 60],
-                    iconAnchor: [50, 60]
-                });
-                
-                const marker = L.marker(cab.pos, { icon: icon }).addTo(currentMap);
-                marker.on('click', () => showCabinetDetail(cab.id));
-                markers.push(marker);
-            });
-            
-            // 添加无人机标记
-            devices.uavs.forEach(uav => {
-                const icon = L.divIcon({
-                    className: 'custom-marker',
-                    html: `
-                        <div style="display: flex; flex-direction: column; align-items: center;">
-                            <div style="width: 30px; height: 30px; background: #ff9800; clip-path: polygon(50% 0%, 0% 100%, 100% 100%); box-shadow: 0 0 20px #ff9800; animation: fly 3s linear infinite; border: 2px solid white;"></div>
-                            <div style="background: rgba(16,32,56,0.95); color: white; padding: 4px 8px; border-radius: 4px; font-size: 11px; white-space: nowrap; margin-top: 5px; border: 1px solid #ff9800;">
-                                ${uav.id} ${uav.battery}%
-                            </div>
-                        </div>
-                    `,
-                    iconSize: [100, 60],
-                    iconAnchor: [50, 60]
-                });
-                
-                const marker = L.marker(uav.pos, { icon: icon }).addTo(currentMap);
-                marker.on('click', () => showUavDetail(uav.id));
-                markers.push(marker);
-            });
-            
-            document.getElementById('lastUpdateTime').textContent = new Date().toLocaleTimeString();
-            document.getElementById('mapStats').innerHTML = `柜机: ${devices.cabinets.length} | 无人机: ${devices.uavs.length} | 航迹: 2`;
-        }
-        
-        // 模拟数据更新
-        function simulateDataUpdate() {
-            // 随机更新设备数据
-            devices.cabinets.forEach(cab => {
-                cab.voltage = (220 + Math.random() * 3 - 1.5).toFixed(1);
-                cab.signal = Math.floor(90 + Math.random() * 10);
-                cab.temperature = (25 + Math.random() * 2 - 1).toFixed(1);
-            });
-            
-            devices.uavs.forEach(uav => {
-                if (uav.status === 'flying') {
-                    uav.battery = Math.max(0, uav.battery - Math.random() * 2);
-                    if (uav.battery < 20 && uav.battery > 15) {
-                        addLog(`无人机 ${uav.id} 电量低于20%`, 'warning', `当前电量: ${uav.battery.toFixed(0)}%`);
-                        showNotification(`⚠️ 无人机 ${uav.id} 电量低于20%`, 'warning');
-                    }
-                }
-            });
-            
-            // 更新KPI
-            const onlineCabinets = devices.cabinets.filter(c => c.status === 'online').length;
-            const onlineUavs = devices.uavs.filter(u => u.status !== 'offline').length;
-            document.getElementById('onlineCabinets').textContent = onlineCabinets;
-            document.getElementById('onlineUavs').textContent = onlineUavs;
-            document.getElementById('onlineCount').textContent = `${onlineCabinets + onlineUavs}/${devices.cabinets.length + devices.uavs.length}`;
-            
-            // 更新格口使用率
-            const totalUsed = devices.cabinets.reduce((sum, c) => sum + c.used, 0);
-            const totalSlots = devices.cabinets.reduce((sum, c) => sum + c.total, 0);
-            const usageRate = ((totalUsed / totalSlots) * 100).toFixed(0);
-            document.getElementById('slotUsageRate').textContent = `${usageRate}%`;
-            
-            // 更新图表
-            updateChart();
-            
-            // 刷新显示
-            refreshCabinetRanking();
-            refreshDeviceList();
-            refreshMapMarkers();
-            
-            document.getElementById('lastUpdateTime').textContent = new Date().toLocaleTimeString();
-        }
-        
-        // 刷新所有数据
-        function refreshAllData() {
-            addLog('手动刷新所有数据', 'info');
-            showNotification('正在刷新数据...', 'info');
-            simulateDataUpdate();
-            refreshAlarmList();
-            refreshTaskList();
-            showNotification('数据已更新', 'info');
-        }
-        
-        // 初始化地图
-        function initMap() {
-            try {
-                currentMap = L.map('china-map').setView([35.0, 108.0], 4);
-                L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-                    attribution: '&copy; OpenStreetMap',
-                    subdomains: 'abcd',
-                    maxZoom: 19,
-                    minZoom: 3
-                }).addTo(currentMap);
-                
-                refreshMapMarkers();
-                
-                const style = document.createElement('style');
-                style.textContent = `
-                    @keyframes pulse {
-                        0% { transform: scale(1); box-shadow: 0 0 20px #4caf50; }
-                        50% { transform: scale(1.1); box-shadow: 0 0 40px #4caf50; }
-                        100% { transform: scale(1); box-shadow: 0 0 20px #4caf50; }
-                    }
-                    @keyframes fly {
-                        0% { transform: rotate(0deg) translateY(0); }
-                        25% { transform: rotate(5deg) translateY(-2px); }
-                        75% { transform: rotate(-5deg) translateY(2px); }
-                        100% { transform: rotate(0deg) translateY(0); }
-                    }
-                `;
-                document.head.appendChild(style);
-                
-                addLog('地图初始化成功', 'info');
-            } catch (error) {
-                console.error('地图初始化失败:', error);
-                addLog('地图初始化失败: ' + error.message, 'error');
-            }
-        }
-        
-        // ==================== 交互函数 ====================
-        
-        // 显示控制面板
-        function showControlPanel(deviceId) {
-            document.getElementById('controlDeviceId').value = deviceId;
-            document.getElementById('controlPanel').classList.add('active');
-        }
-        
-        // 关闭控制面板
-        function closeControlPanel() {
-            document.getElementById('controlPanel').classList.remove('active');
-        }
-        
-        // 发送指令
-        function sendCommand() {
-            const deviceId = document.getElementById('controlDeviceId').value;
-            const command = document.getElementById('controlCommand').value;
-            const slot = document.getElementById('slotNumber').value;
-            
-            addLog(`发送指令到 ${deviceId}: ${command}${slot ? ` 格口${slot}` : ''}`, 'info');
-            showNotification(`指令已发送到 ${deviceId}`, 'info');
-            
-            closeControlPanel();
-        }
-        
-        // 确认告警
-        function ackAlarm(device) {
-            const alarm = alarms.find(a => a.device === device && a.status === 'active');
-            if (alarm) {
-                alarm.status = 'acknowledged';
-                addLog(`确认告警: ${device} - ${alarm.content}`, 'info');
-                showNotification(`已确认 ${device} 的告警`, 'info');
-                refreshAlarmList();
-            }
-        }
-        
-        // 取消任务
-        function cancelTask(taskId) {
-            addLog(`取消任务: ${taskId}`, 'warning');
-            showNotification(`任务 ${taskId} 已取消`, 'warning');
-            // 模拟移除任务
-            for (let key in tasks) {
-                tasks[key] = tasks[key].filter(t => t.id !== taskId);
-            }
-            refreshTaskList();
-        }
-        
-        // 重试任务
-        function retryTask(taskId) {
-            addLog(`重试任务: ${taskId}`, 'info');
-            showNotification(`任务 ${taskId} 正在重试`, 'info');
-            const task = tasks.failed.find(t => t.id === taskId);
-            if (task) {
-                tasks.failed = tasks.failed.filter(t => t.id !== taskId);
-                task.status = 'pending';
-                task.progress = 0;
-                tasks.pending.push(task);
-            }
-            refreshTaskList();
-        }
-        
-        // 显示任务详情
-        function showTaskDetail(taskId) {
-            showNotification(`查看任务 ${taskId} 详情`, 'info');
-        }
-        
-        // 新建任务弹窗
-        function showNewTaskModal() {
-            const cabinets = devices.cabinets.map(c => `${c.id} - ${c.name}`).join('\n');
-            showNotification(`新建任务\n请选择目标柜机:\n${cabinets}`, 'info');
-            addLog('打开新建任务窗口', 'info');
-        }
-        
-        // 历史任务查询
-        function queryHistoryTasks() {
-            addLog('查询历史任务', 'info');
-            showNotification('查询历史任务中...', 'info');
-        }
-        
-        // 导出报表
-        function exportTaskReport() {
-            addLog('导出任务报表', 'info');
-            showNotification('报表导出中...', 'info');
-        }
-        
-        function exportRankingReport() {
-            addLog('导出使用率报表', 'info');
-            showNotification('使用率报表导出中...', 'info');
-        }
-        
-        // 区域筛选
-        function filterByArea(area) {
-            addLog(`筛选区域: ${area}`, 'info');
-            showNotification(`已筛选 ${area} 区域`, 'info');
-        }
-        
-        // 类型筛选
-        function filterByType(type) {
-            addLog(`筛选类型: ${type === 'cabinet' ? '物流柜' : type === 'uav' ? '无人机' : '全部'}`, 'info');
-            showNotification(`已筛选 ${type === 'cabinet' ? '物流柜' : type === 'uav' ? '无人机' : '全部设备'}`, 'info');
-        }
-        
-        // 切换任务标签
-        function switchTaskTab(tab) {
-            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-            event.target.classList.add('active');
-            refreshTaskList();
-        }
-        
-        // 显示柜机详情
-        function showCabinetDetail(id) {
-            const cabinet = devices.cabinets.find(c => c.id === id);
-            if (cabinet) {
-                showNotification(`${cabinet.name}\n电压: ${cabinet.voltage}V | 信号: ${cabinet.signal}% | 温度: ${cabinet.temperature}°C`, 'info');
-                addLog(`查看柜机详情: ${id} - ${cabinet.name}`, 'info');
-            }
-        }
-        
-        // 显示无人机详情
-        function showUavDetail(id) {
-            const uav = devices.uavs.find(u => u.id === id);
-            if (uav) {
-                showNotification(`${uav.id}\n电量: ${uav.battery}% | 高度: ${uav.altitude}m`, 'info');
-                addLog(`查看无人机详情: ${id}`, 'info');
-            }
-        }
-        
-        // 生成3D格口（保持原有功能）
-        function generateSlots() {
-            const container = document.getElementById('cabinetSlots3D');
-            if (!container) return;
-            
-            container.innerHTML = '';
-            for (let i = 1; i <= 20; i++) {
-                const slot = document.createElement('div');
-                slot.className = 'slot-3d';
-                if (i <= 12) {
-                    slot.classList.add('used');
-                } else {
-                    slot.classList.add('free');
-                }
-                
-                slot.innerHTML = `
-                    <span class="slot-number">${i}</span>
-                    <span class="slot-status">${i <= 12 ? '占用' : '空闲'}</span>
-                    <span class="lock-status">${i % 5 === 0 ? '🔒关' : '🔓开'}</span>
-                `;
-                
-                slot.onclick = function() { 
-                    showNotification(`格口 ${i} 详情\n状态: ${i <= 12 ? '占用' : '空闲'}\n锁状态: ${i % 5 === 0 ? '关闭' : '打开'}`, 'info');
-                };
-                container.appendChild(slot);
-            }
-        }
-        
-        // 远程开锁
-        function remoteOpenSlot() {
-            addLog('远程开锁指令', 'info');
-            showNotification('开锁指令已发送', 'info');
-        }
-        
-        // 刷新状态
-        function refreshStatus() {
-            addLog('刷新设备状态', 'info');
-            simulateDataUpdate();
-            showNotification('状态已刷新', 'info');
-        }
-        
-        // 导出日志
-        function exportLog() {
-            addLog('导出操作日志', 'info');
-            showNotification('日志导出中...', 'info');
-        }
-        
-        // 关闭弹窗
-        function closeModal() {
-            document.getElementById('cabinetModal').classList.remove('active');
-        }
-        
-        // ==================== 启动监控系统 ====================
-        
+
+        // 页面加载
         window.onload = function() {
             initChart();
             initMap();
             refreshDeviceList();
-            refreshAlarmList();
             refreshTaskList();
+            refreshAlarmList();
             refreshCabinetRanking();
-            generateSlots();
+            generateSlots(12);
+            addLog('监控系统启动成功', 'info');
+            showNotification('监控系统已启动，地图支持缩放拖拽', 'info');
             
-            // 启动实时监控（每5秒更新一次）
-            monitoringInterval = setInterval(() => {
-                simulateDataUpdate();
-                refreshAlarmList();
-                refreshTaskList();
-            }, 5000);
-            
-            addLog('监控系统启动成功', 'info', '实时数据更新间隔: 5秒');
-            showNotification('监控系统已启动', 'info');
-            
-            // 初始化日期选择器
-            flatpickr("#startDate", { dateFormat: "Y-m-d" });
-            flatpickr("#endDate", { dateFormat: "Y-m-d" });
-            
-            // 控制指令联动
-            document.getElementById('controlCommand').addEventListener('change', function(e) {
-                document.getElementById('slotParam').style.display = e.target.value === 'open_slot' ? 'block' : 'none';
-            });
-        };
-        
-        // 页面关闭时清理定时器
-        window.onbeforeunload = function() {
-            if (monitoringInterval) {
-                clearInterval(monitoringInterval);
-            }
+            setInterval(() => { refreshCabinetRanking(); refreshAlarmList(); }, 10000);
         };
     </script>
 </body>

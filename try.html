@@ -30,8 +30,6 @@
             padding: 10px;
             background: #0a1a2f;
         }
-
-        /* 顶部导航 */
         .top-nav {
             grid-column: 1 / -1;
             background: rgba(16, 32, 56, 0.95);
@@ -44,7 +42,6 @@
             border: 1px solid #1e3a5f;
             box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
         }
-
         .logo {
             display: flex;
             align-items: center;
@@ -92,8 +89,6 @@
             color: #8a9bb5;
             font-size: 14px;
         }
-
-        /* 左侧面板 - 占满空间 */
         .left-panel {
             background: rgba(16, 32, 56, 0.95);
             backdrop-filter: blur(10px);
@@ -219,8 +214,6 @@
             flex-direction: column;
             gap: 3px;
         }
-
-        /* 中间地图区域 */
         .center-panel {
             background: #0f2a44;
             border-radius: 10px;
@@ -319,8 +312,6 @@
             background: #00e5ff;
             box-shadow: 0 0 10px #00e5ff;
         }
-
-        /* 右侧面板 */
         .right-panel {
             background: rgba(16, 32, 56, 0.95);
             backdrop-filter: blur(10px);
@@ -415,8 +406,6 @@
         .level-info {
             background: #2196f3;
         }
-
-        /* 底部面板 */
         .bottom-panel {
             grid-column: 2 / -1;
             background: rgba(16, 32, 56, 0.95);
@@ -579,8 +568,6 @@
             transition: all 0.3s;
             font-size: 12px;
         }
-
-        /* 模态框 */
         .modal {
             display: none;
             position: fixed;
@@ -1071,7 +1058,6 @@
     </div>
 
     <script>
-        // ==================== 核心数据结构 - 新增杭州3个站点 ====================
         let locations = [
             // 原有站点
             { id: 'C001', name: '朝阳音乐喷泉', coord: [120.45, 41.57], area: '辽宁朝阳', type: 'cabinet', used: 12, total: 20, free: 8, voltage: 220.5, signal: 98 },
@@ -1095,8 +1081,6 @@
             { id: 'UAV-005', name: '无人机 U005', coord: [120.24, 30.22], area: '杭州', type: 'uav', battery: 92, altitude: 0, status: 'idle', task: '待命', route: [], eta: '4分钟' },
             { id: 'UAV-006', name: '无人机 U006', coord: [120.12, 30.26], area: '杭州', type: 'uav', battery: 85, altitude: 0, status: 'idle', task: '待命', route: [], eta: '3分钟' }
         ];
-
-        // 任务数据 - 增加杭州相关任务
         let tasks = {
             pending: [
                 { id: 'TK1001', uav: 'UAV-003', cabinet: 'C004', slot: 5, item: '顺丰包裹', duration: '8分钟', status: 'pending', time: '10:30', description: '普通快递' },
@@ -1121,8 +1105,6 @@
         let currentFilter = { area: 'all', type: 'all' };
         let activeTab = 'pending';
         let map, markers = [], polylines = [];
-
-        // ==================== 地图与地理逻辑 ====================
         function initMap() {
             map = L.map('china-map').setView([35.0, 108.0], 5);
             L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', { maxZoom: 18 }).addTo(map);
@@ -1172,8 +1154,6 @@
             document.getElementById('flightStatus').innerText = `✈️ 飞行中: ${flyingCount}架`;
             document.getElementById('mapStats').innerText = `柜机: ${locations.filter(l=>l.type==='cabinet').length} | 无人机: ${locations.filter(l=>l.type==='uav').length} | 杭州3站已上线`;
         }
-
-        // ==================== 任务管理系统 ====================
         function switchTaskTab(tabName, element) {
             activeTab = tabName;
             document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
@@ -1299,8 +1279,6 @@
                 `);
             }
         }
-
-        // ==================== 辅助功能 ====================
         function refreshAllData() {
             refreshTaskList();
             renderMapElements();
@@ -1430,8 +1408,6 @@
             showNotification('报告导出中...', 'info');
             addLog('导出分析报告', 'info');
         }
-
-        // ==================== 初始化 ====================
         window.onload = () => {
             initMap();
             refreshAllData();
